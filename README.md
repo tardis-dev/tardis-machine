@@ -90,7 +90,7 @@ In contrast to HTTP API for WebSocket API filters aren't provided explicitly as 
 
 - ### `npx` <sub>(requires Node.js v12 installed on host machine)</sub>
 
-  That will start time-machine server running on port `8000` by default (port can be changes `--port`)
+  That will start tardis-machine server running on port `8000` by default (port can be changes `--port`)
 
   ```sh
   npx tardis-machine --api-key=YOUR_API_KEY
