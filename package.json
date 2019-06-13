@@ -1,0 +1,75 @@
+{
+  "name": "tardis-machine",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=12"
+  },
+  "description": "Locally installable high level API server & caching layer for tardis.dev API- historical tick-level crypto markets data replay service.",
+  "main": "dist/index.js",
+  "source": "src/index.js",
+  "types": "dist/index.d.ts",
+  "repository": "tardis-dev/tardis-machine",
+  "homepage": "https://github.com/tardis-dev/tardis-machine",
+  "scripts": {
+    "build": "tsc",
+    "precommit": "lint-staged",
+    "test": "jest",
+    "prepare": "npm run build",
+    "release": "cross-var \"npm run test && npm run build && git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish --access=public\""
+  },
+  "bin": {
+    "tardis-machine": "./bin/tardis-machine.js"
+  },
+  "files": [
+    "src",
+    "dist",
+    "bin"
+  ],
+  "keywords": [
+    "cryptocurrency data feed",
+    "historical market data",
+    "replay service",
+    "API server",
+    "crypto markets data replay"
+  ],
+  "license": "MPL-2.0",
+  "dependencies": {
+    "@clusterws/cws": "^0.15.0",
+    "debug": "^4.1.1",
+    "find-my-way": "^2.0.1",
+    "is-docker": "^2.0.0",
+    "tardis-client": "^1.0.0",
+    "yargs": "^13.2.4"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.4",
+    "@types/jest": "^24.0.13",
+    "@types/node": "^12.0.3",
+    "@types/node-fetch": "^2.3.5",
+    "@types/split2": "^2.1.6",
+    "@types/ws": "^6.0.1",
+    "@types/yargs": "^13.0.0",
+    "cross-var": "^1.1.0",
+    "husky": "^1.2.0",
+    "jest": "^24.7.1",
+    "lint-staged": "^8.1.0",
+    "node-fetch": "^2.6.0",
+    "prettier": "^1.17.0",
+    "split2": "^3.1.1",
+    "ts-jest": "^24.0.2",
+    "typescript": "^3.5.1",
+    "ws": "^7.0.0"
+  },
+  "lint-staged": {
+    "*.{ts}": [
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "jest": {
+    "transform": {
+      "\\.(ts|tsx)?$": "ts-jest"
+    },
+    "testEnvironment": "node"
+  }
+}
