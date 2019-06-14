@@ -2,23 +2,23 @@
 
 Locally installable high level API server & caching layer for [tardis.dev](https://tardis.dev) API - historical tick-level crypto markets data replay service.
 
-Provides easy to use, high level streaming HTTP and WebSocket endpoints that allow replaying supported historical crypto markets WebSocket data feeds from any past point in time.
+Provides easy to use streaming HTTP and WebSocket endpoints that allow replaying supported historical crypto markets WebSocket data feeds from any past point in time.
 
 Check out [`tardis-client`](https://github.com/tardis-dev/node-client) as well if you're using Node.js.
 
 ## HTTP endpoint
 
-Accessible via **`/replay/:<EXCHANGE>?from=<FROM_DATE>&to=<TO_DATE>&filters=<FILTERS>`**
+Accessible via **`/replay?exchange=<EXCHANGE>&from=<FROM_DATE>&to=<TO_DATE>&filters=<FILTERS>`**
 
 Allows replaying historical crypto exchange WebSocket data feed via streaming HTTP response (new line delimited JSON).
 Returns up to 400 000 messages per second (depending on the machine set-up and local cache ratio).
 
 #### Example requests:
 
-- `http://localhost:8000/replay/bitmex?from=2019-05-01&to=2019-05-02&filters=[{"channel":"trade"}]` - returns all trades that happened on BitMEX on 1st of May 2019 in [ndjson format](http://ndjson.org/).
-- `http://localhost:8000/replay/bitmex?from=2019-04-01&to=2019-04-02&filters=[{"channel":"trade","symbols":["XBTUSD","ETHUSD"]},{"channel":"orderBookL2","symbols":["XBTUSD"]}]` - returns all trades that happened on BitMEX on 1st of April 2019 for `XBTUSD` and `ETHUSD` as well as `orderbookL2` snapshot and updates for `XBTUSD` in [ndjson format](http://ndjson.org/).
+- `http://localhost:8000/replay?exchange=bitmex&from=2019-05-01&to=2019-05-02&filters=[{"channel":"trade"}]` - returns all trades that happened on BitMEX on 1st of May 2019 in [ndjson format](http://ndjson.org/).
+- `http://localhost:8000/replay?exchange=bitmex&from=2019-04-01&to=2019-04-02&filters=[{"channel":"trade","symbols":["XBTUSD","ETHUSD"]},{"channel":"orderBookL2","symbols":["XBTUSD"]}]` - returns all trades that happened on BitMEX on 1st of April 2019 for `XBTUSD` and `ETHUSD` as well as `orderbookL2` snapshot and updates for `XBTUSD` in [ndjson format](http://ndjson.org/).
 
-#### Available params:
+#### Available query string params params:
 
 | name                 | type                                                                            | default value | description                                                                                                                                                                                                                                                                        |
 | -------------------- | ------------------------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -47,7 +47,7 @@ Returns up to 400 000 messages per second (depending on the machine set-up and l
 
 ## WebSocket endpoint
 
-Accessible via **`/ws-replay/?exchange=<EXCHANGE>?from=<FROM_DATE>&to=<TO_DATE>`**
+Accessible via **`/ws-replay/?exchange=<EXCHANGE>&from=<FROM_DATE>&to=<TO_DATE>`**
 
 Exchanges & various 3rd party data providers WebSocket APIs allows subscribing only real-time data feeds and there is no way to subscribe to and **"replay"** market from any point in the past. Using `tardis-machine` that is no longer the case.
 

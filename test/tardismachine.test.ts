@@ -19,12 +19,12 @@ describe('tardis-machine', () => {
     await tardisMachine.stop()
   })
 
-  describe('GET /replay:exchange', () => {
+  describe('HTTP GET /replay', () => {
     test('invalid params', async () => {
-      let response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}/binance?from=sdf&to=dsd`)
+      let response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?exchange=binance&from=sdf&to=dsd`)
       expect(response.status).toBe(500)
 
-      response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}/binance?from=2019-06-05 00:00Z&to=2019-05-05 00:05Z`)
+      response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?exchange=binance&from=2019-06-05 00:00Z&to=2019-05-05 00:05Z`)
       expect(response.status).toBe(500)
     })
 
@@ -43,7 +43,9 @@ describe('tardis-machine', () => {
         ]
 
         let response = await fetch(
-          `${HTTP_REPLAY_DATA_FEEDS_URL}/bitmex?from=2019-05-01&to=2019-05-02&filters=${encodeURIComponent(JSON.stringify(filters))}`
+          `${HTTP_REPLAY_DATA_FEEDS_URL}?exchange=bitmex&from=2019-05-01&to=2019-05-02&filters=${encodeURIComponent(
+            JSON.stringify(filters)
+          )}`
         )
 
         expect(response.status).toBe(200)
@@ -72,13 +74,13 @@ describe('tardis-machine', () => {
     )
 
     test('unauthorizedAccess', async () => {
-      let response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}/bitmex?from=2019-05-02&to=2019-05-03`)
+      let response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?exchange=bitmex&from=2019-05-02&to=2019-05-03`)
 
       expect(response.status).toBe(401)
     })
   })
 
-  describe('WS /ws', () => {
+  describe('WS /ws-replay', () => {
     test(
       'subcribes to and replays historical Coinbase data feed of 1st of Jun 2019 (ZEC-USDC trades)',
       async () => {

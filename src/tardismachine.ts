@@ -27,26 +27,26 @@ export class TardisMachine {
     })
 
     // setup /replay streaming http route
-    router.on('GET', '/replay/:exchange', async (req, res, params) => {
+    router.on('GET', '/replay', async (req, res) => {
       try {
         const startTimestamp = new Date().getTime()
         const parsedQuery = url.parse(req.url!, true).query
         const filtersQuery = parsedQuery['filters'] as string
 
         const replayOptions: ReplayOptions<any> = {
-          exchange: params.exchange,
+          exchange: parsedQuery['exchange'] as string,
           from: parsedQuery['from'] as string,
           to: parsedQuery['to'] as string,
           filters: filtersQuery ? JSON.parse(filtersQuery) : undefined
         }
 
-        debug('GET /replay/:exchange request started, options: %o', replayOptions)
+        debug('GET /replay request started, options: %o', replayOptions)
 
         const streamedMessagesCount = await this._writeDataFeedMessagesToResponse(res, replayOptions)
         const endTimestamp = new Date().getTime()
 
         debug(
-          'GET /replay/:exchange request finished, options: %o, time: %d seconds, total messages count:%d',
+          'GET /replay request finished, options: %o, time: %d seconds, total messages count:%d',
           replayOptions,
           (endTimestamp - startTimestamp) / 1000,
           streamedMessagesCount
@@ -58,8 +58,8 @@ export class TardisMachine {
           url: e.url
         }
 
-        debug('GET /replay/:exchange request error: %o', e)
-        console.error('GET /replay/:exchange request error:', e)
+        debug('GET /replay request error: %o', e)
+        console.error('GET /replay request error:', e)
 
         if (!res.finished) {
           res.statusCode = e.status || 500
@@ -172,7 +172,7 @@ export class TardisMachine {
       console.log(`TardisMachine is running inside Docker container...`)
     } else {
       console.log(`TardisMachine is running...`)
-      console.log(`--> HTTP endpoint: http://localhost:${port}/replay/:exchange`)
+      console.log(`--> HTTP endpoint: http://localhost:${port}/replay`)
       console.log(`--> WebSocket endpoint: http://localhost:${port}/ws-replay`)
     }
 
