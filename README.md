@@ -1,6 +1,6 @@
 # tardis-machine
 
-Locally installable high level API server & caching layer for [tardis.dev](https://tardis.dev) API - historical tick-level crypto markets data replay service.
+Locally installable high level API server & caching layer for [tardis.dev](https://tardis.dev) - historical cryptocurrency market data replay API..
 
 Provides easy to use streaming HTTP and WebSocket endpoints that allow replaying supported historical crypto markets WebSocket data feeds from any past point in time.
 
