@@ -1,8 +1,9 @@
 # tardis-machine
 
-Locally installable high level API server & caching layer for [tardis.dev](https://tardis.dev) - historical cryptocurrency market data replay API..
+[tardis.dev](https://tardis.dev) API client with built-in local caching providing on-demand tick-level market data replay from any point in time in exchange's Websocket data format.
 
-Provides easy to use streaming HTTP and WebSocket endpoints that allow replaying supported historical crypto markets WebSocket data feeds from any past point in time.
+[![Version](https://img.shields.io/npm/v/tardis-machine.svg)](https://www.npmjs.org/package/tardis-machine)
+[![Try on RunKit](https://badge.runkitcdn.com/tardis-machine.svg)](https://runkit.com/npm/tardis-machine)
 
 Check out [`tardis-client`](https://github.com/tardis-dev/node-client) as well if you're using Node.js.
 
@@ -49,13 +50,11 @@ Returns up to 400 000 messages per second (depending on the machine set-up and l
 
 Accessible via **`/ws-replay/?exchange=<EXCHANGE>&from=<FROM_DATE>&to=<TO_DATE>`**
 
-Exchanges & various 3rd party data providers WebSocket APIs allows subscribing only real-time data feeds and there is no way to subscribe to and **"replay"** market from any point in the past. Using `tardis-machine` that is no longer the case.
+Exchanges & various 3rd party data providers WebSocket APIs allows subscribing only to real-time data feeds and there is no way to subscribe to and **"replay"** market from any point in the past. By using `tardis-machine` that is now possible.
 
 #### Example:
 
 Example below shows how to subscribe to BitMEX historical data feed (from 2019-06-01 to 2019-06-02) to `trade:XBTUSD` and `orderBookL2:XBTUSD` channels and replay such stream as if it was a real-time one. `Subscribe` request messages format as well as received messages format is exactly the same as in native exchanges WebSocket APIs.
-
-**In many cases such websocket historical data feeds can be consumed using already available WebSocket clients for various exchanges. Imagine having single 'data pipeline' for real-time trading and backtesting.**
 
 ```js
 const ws = new WebSocket('ws://localhost:8000/ws-replay?exchange=bitmex&from=2019-06-01&to=2019-06-02')
@@ -72,6 +71,38 @@ ws.onopen = () => {
 
   ws.send(JSON.stringify(subscribePayload))
 }
+```
+
+In many cases such websocket historical data feeds can be consumed using already available WebSocket clients for various exchanges as in example below.
+
+**That opens the possibility of having single data pipeline for real-time trading and backtesting.**
+
+```js
+// tardis machine can be run as CLI or inside Docker container - https://github.com/tardis-dev/tardis-machine
+// example below starts it from code
+const { TardisMachine } = require('tardis-machine')
+const BitMEXClient = require('bitmex-realtime-api')
+const PORT = 8072
+const WS_REPLAY_URL = `ws://localhost:${PORT}/ws-replay?exchange=bitmex&from=2019-06-01&to=2019-06-01 02:00`
+const tardisMachine = new TardisMachine({ cacheDir: './.cache' })
+
+async function runTardisMachineWithBitMEXOfficialClient() {
+  await tardisMachine.run(PORT)
+  // only change required for BitMEX client is to point it to tardis-machine 'replay' endpoint
+  const officialBitMEXClient = new BitMEXClient({ endpoint: WS_REPLAY_URL })
+
+  officialBitMEXClient.addStream('ADAM19', 'trade', function(data, symbol, tableName) {
+    if (!data.length) return
+
+    const trade = data[data.length - 1] // the last data element is the newest trade
+    console.log(trade, symbol, tableName)
+  })
+
+  await new Promise(resolve => officialBitMEXClient.on('end', resolve))
+  await tardisMachine.stop()
+}
+
+await runTardisMachineWithBitMEXOfficialClient()
 ```
 
 Check out [tests](https://github.com/tardis-dev/tardis-machine/blob/master/test/tardismachine.test.ts#L81) for more examples.
@@ -154,7 +185,7 @@ In contrast to HTTP API for WebSocket API filters aren't provided explicitly as 
 
 #### Order book snapshots
 
-Order book snapshots are available at the beginning of the day ( 00:00 UTC). (TODO: that requires more info)
+Order book snapshots are always available at the beginning of the day ( 00:00 UTC) and/or when websocket connection is restarted by Exchange.
 
 #### How to debug it if something went wrong?
 

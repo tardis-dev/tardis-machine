@@ -4,6 +4,8 @@ import WebSocket from 'ws'
 import { FilterForExchange } from 'tardis-client'
 import { TardisMachine } from '../src'
 
+const BitMEXClient = require('bitmex-realtime-api')
+
 const PORT = 8072
 const HTTP_REPLAY_DATA_FEEDS_URL = `http://localhost:${PORT}/replay`
 const WS_REPLAY_URL = `ws://localhost:${PORT}/ws-replay`
@@ -172,15 +174,20 @@ describe('tardis-machine', () => {
     )
 
     test(
-      'subcribes to and replays historical BitMEX data feed of 1st of Jun 2019 (ADAM19 trades)',
-      async () => {
-        let messages: string[] = []
-        const simpleBitmexWSClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-02`,
-          message => {
-            messages.push(message as string)
-          }
-        )
+      'subcribes to and replays historical BitMEX data feed of 1st of Jun 2019 (ADAM19 trades) using simple and official BitMEX clients',
+      async end => {
+        let trades: string[] = []
+        let wsURL = `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-02`
+        const simpleBitmexWSClient = new SimpleWebsocketClient(wsURL, message => {
+          const parsedMessage = JSON.parse(message)
+          if (parsedMessage.action != 'insert') return
+
+          parsedMessage.data.forEach((trade: any) => {
+            if (trade.symbol != 'ADAM19') return
+
+            trades.push(JSON.stringify(trade))
+          })
+        })
 
         await simpleBitmexWSClient.send({
           op: 'subscribe',
@@ -188,7 +195,23 @@ describe('tardis-machine', () => {
         })
 
         await simpleBitmexWSClient.closed()
-        expect(messages).toMatchSnapshot()
+        expect(trades).toMatchSnapshot('ADAM19Trades')
+
+        let officialClientTrades: string[] = []
+
+        const officialBitMEXClient = new BitMEXClient({ endpoint: wsURL, maxTableLen: 20000 })
+
+        officialBitMEXClient.addStream('ADAM19', 'trade', function(data: any) {
+          if (!data.length) return
+
+          const trades = data.slice(officialClientTrades.length, data.length).map((t: any) => JSON.stringify(t))
+          officialClientTrades.push(...trades)
+        })
+
+        officialBitMEXClient.on('end', () => {
+          expect(officialClientTrades).toMatchSnapshot('ADAM19Trades')
+          end()
+        })
       },
       10 * 60 * 1000
     )

@@ -1,7 +1,7 @@
 import { ParsedUrlQuery } from 'querystring'
 import dbg from 'debug'
+import WebSocket from 'ws'
 import { TardisClient, Exchange, ReplayOptions } from 'tardis-client'
-import { WebSocket } from '@clusterws/cws'
 import { subscriptionsMappers, SubscriptionMapper } from './mappers'
 
 const debug = dbg('tardis-machine')
@@ -20,7 +20,7 @@ export class ReplaySession {
         await this._start()
       } catch (e) {
         debug('received error in ReplaySession, %o', e)
-        this._closeAllConnections(e)
+        await this._closeAllConnections(e)
       }
       // always run onCloseCallback
       this._onCloseCallback()
@@ -80,12 +80,21 @@ export class ReplaySession {
       }
     }
 
-    this._closeAllConnections()
+    await this._closeAllConnections()
     debug('finished ReplaySession with %d connections, %s', this._connections.length, this._connections.map(c => c.toString()))
   }
 
-  private _closeAllConnections(error: Error | undefined = undefined) {
-    this._connections.forEach(connection => connection.close(error))
+  private async _closeAllConnections(error: Error | undefined = undefined) {
+    for (let i = 0; i < this._connections.length; i++) {
+      const connection = this._connections[i]
+
+      // let's wait until buffer is empty before closing normal connections
+      while (!error && connection.bufferedAmount > 0) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+
+      connection.close(error)
+    }
   }
 
   public onClose(onCloseCallback: () => void) {
@@ -119,6 +128,10 @@ export class WebsocketConnection {
     this._websocket.on('error', e => {
       this._socketError = e
     })
+  }
+
+  public get bufferedAmount() {
+    return this._websocket.bufferedAmount
   }
 
   public close(error: Error | undefined = undefined) {

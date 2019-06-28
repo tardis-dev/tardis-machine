@@ -4,7 +4,7 @@ import url from 'url'
 import dbg from 'debug'
 import findMyWay from 'find-my-way'
 import isDocker from 'is-docker'
-import { WebSocketServer, WebSocket } from '@clusterws/cws'
+import WebSocket from 'ws'
 import { TardisClient, ReplayOptions, Exchange } from 'tardis-client'
 import { ReplaySession, WebsocketConnection } from './replaysession'
 
@@ -71,13 +71,55 @@ export class TardisMachine {
     // set timeout to 0 meaning infinite http timout - streaming may take some time expecially for longer date ranges
     this._httpServer.timeout = 0
 
-    // setup websocket server for /ws-replay path
-    const websocketServer = new WebSocketServer({
-      server: this._httpServer,
-      path: '/ws-replay'
+    const websocketServer = new WebSocket.Server({ noServer: true })
+
+    this._httpServer.on('upgrade', function upgrade(request, socket, head) {
+      const pathname = url.parse(request.url).pathname
+      // setup websocket server for /ws-replay path
+      if (pathname === '/ws-replay') {
+        websocketServer.handleUpgrade(request, socket, head, function done(ws) {
+          websocketServer.emit('connection', ws, request)
+        })
+      } else {
+        socket.destroy()
+      }
     })
 
     websocketServer.on('connection', this._addToOrCreateNewReplaySession.bind(this))
+    this._setUpWebsocketClientsRelatedRoutesRoutes(router)
+  }
+
+  public async run(port: number) {
+    if (this.options.clearCache) {
+      await this._tardisClient.clearCache()
+    }
+
+    await new Promise((resolve, reject) => {
+      try {
+        this._httpServer.on('error', reject)
+        this._httpServer.listen(port, resolve)
+      } catch (e) {
+        reject(e)
+      }
+    })
+
+    if (isDocker()) {
+      console.log(`TardisMachine is running inside Docker container...`)
+    } else {
+      console.log(`TardisMachine is running...`)
+      console.log(`--> HTTP endpoint: http://localhost:${port}/replay`)
+      console.log(`--> WebSocket endpoint: http://localhost:${port}/ws-replay`)
+    }
+
+    console.log(`Check out https://tardis.dev for help or more information.`)
+  }
+
+  public async stop() {
+    await new Promise((resolve, reject) => {
+      this._httpServer.close(err => {
+        err ? reject(err) : resolve()
+      })
+    })
   }
 
   private async _addToOrCreateNewReplaySession(ws: WebSocket, upgReq: IncomingMessage) {
@@ -120,7 +162,7 @@ export class TardisMachine {
     const BATCH_SIZE = 32
 
     // not 100% sure that's necessary since we're returning ndjson in fact, not json
-    res.setHeader('Content-Type', 'text/json; charset=utf-8')
+    res.setHeader('Content-Type', 'application/json')
 
     let buffers: Buffer[] = []
     let totalMessagesCount = 0
@@ -154,36 +196,45 @@ export class TardisMachine {
     return totalMessagesCount
   }
 
-  public async run(port: number) {
-    if (this.options.clearCache) {
-      await this._tardisClient.clearCache()
-    }
-
-    await new Promise((resolve, reject) => {
-      try {
-        this._httpServer.on('error', reject)
-        this._httpServer.listen(port, resolve)
-      } catch (e) {
-        reject(e)
+  private _setUpWebsocketClientsRelatedRoutesRoutes(router: findMyWay.Instance<findMyWay.HTTPVersion.V1>) {
+    // based on https://www.bitmex.com/api/v1/schema/websocketHelp
+    const bitmexWSHelpResponse = JSON.stringify({
+      info: 'See https://www.bitmex.com/app/wsAPI and https://www.bitmex.com/explorer for more documentation.',
+      usage: 'Send a message in the format: {"op": string, "args": Array<string>}',
+      ops: ['authKey', 'authKeyExpires', 'cancelAllAfter', 'subscribe', 'unsubscribe'],
+      subscribe: 'To subscribe, send: {"op": "subscribe", "args": [subscriptionTopic, ...]}.',
+      subscriptionSubjects: {
+        authenticationRequired: [],
+        public: [
+          'announcement',
+          'connected',
+          'chat',
+          'publicNotifications',
+          'instrument',
+          'settlement',
+          'funding',
+          'insurance',
+          'liquidation',
+          'orderBookL2',
+          'orderBookL2_25',
+          'orderBook10',
+          'quote',
+          'trade',
+          'quoteBin1m',
+          'quoteBin5m',
+          'quoteBin1h',
+          'quoteBin1d',
+          'tradeBin1m',
+          'tradeBin5m',
+          'tradeBin1h',
+          'tradeBin1d'
+        ]
       }
     })
 
-    if (isDocker()) {
-      console.log(`TardisMachine is running inside Docker container...`)
-    } else {
-      console.log(`TardisMachine is running...`)
-      console.log(`--> HTTP endpoint: http://localhost:${port}/replay`)
-      console.log(`--> WebSocket endpoint: http://localhost:${port}/ws-replay`)
-    }
-
-    console.log(`Check out https://tardis.dev for help or more information.`)
-  }
-
-  public async stop() {
-    await new Promise((resolve, reject) => {
-      this._httpServer.close(err => {
-        err ? reject(err) : resolve()
-      })
+    router.on('GET', '/api/v1/schema/websocketHelp', async (_, res) => {
+      res.setHeader('Content-Type', 'application/json')
+      res.end(bitmexWSHelpResponse)
     })
   }
 }
