@@ -78,8 +78,7 @@ In many cases such websocket historical data feeds can be consumed using already
 **That opens the possibility of having single data pipeline for real-time trading and backtesting.**
 
 ```js
-// tardis machine can be run as CLI or inside Docker container - https://github.com/tardis-dev/tardis-machine
-// example below starts it from code
+// tardis machine can be run via CLI or inside Docker container as well
 const { TardisMachine } = require('tardis-machine')
 const BitMEXClient = require('bitmex-realtime-api')
 const PORT = 8072

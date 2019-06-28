@@ -2,7 +2,7 @@ const { TardisMachine } = require('tardis-machine')
 const BitMEXClient = require('bitmex-realtime-api')
 const PORT = 8072
 const WS_REPLAY_URL = `ws://localhost:${PORT}/ws-replay?exchange=bitmex&from=2019-06-01&to=2019-06-01 02:00`
-// tardis machine can be run as CLI or inside Docker container - https://github.com/tardis-dev/tardis-machine
+// tardis machine can be run via CLI or inside Docker container as well - https://github.com/tardis-dev/tardis-machine
 const tardisMachine = new TardisMachine({ cacheDir: './.cache' })
 
 async function runTardisMachineWithBitMEXOfficialClient() {
