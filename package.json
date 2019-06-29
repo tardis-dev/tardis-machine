@@ -23,7 +23,8 @@
   "files": [
     "src",
     "dist",
-    "bin"
+    "bin",
+    "example.js"
   ],
   "keywords": [
     "cryptocurrency data feed",

@@ -103,7 +103,7 @@ export class TardisMachine {
       }
     })
 
-    if (isDocker()) {
+    if (isDocker() && !process.env.RUNKIT_HOST) {
       console.log(`TardisMachine is running inside Docker container...`)
     } else {
       console.log(`TardisMachine is running...`)

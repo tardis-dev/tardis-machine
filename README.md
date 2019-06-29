@@ -94,7 +94,7 @@ async function runTardisMachineWithBitMEXOfficialClient() {
     if (!data.length) return
 
     const trade = data[data.length - 1] // the last data element is the newest trade
-    console.log(trade, symbol, tableName)
+    console.log(trade)
   })
 
   await new Promise(resolve => officialBitMEXClient.on('end', resolve))
@@ -184,11 +184,11 @@ In contrast to HTTP API for WebSocket API filters aren't provided explicitly as 
 
 #### Order book snapshots
 
-Order book snapshots are always available at the beginning of the day ( 00:00 UTC) and/or when websocket connection is restarted by Exchange.
+Order book snapshots are always available at the beginning of the day ( 00:00 UTC) and/or when websocket connection was restarted by exchange itself.
 
 #### How to debug it if something went wrong?
 
-This lib uses [debug](https://github.com/visionmedia/debug) package for verbose logging and debugging purposes that can be enabled via `DEBUG` environment variable set to `tardis*`.
+tardis-machine uses [debug](https://github.com/visionmedia/debug) package for verbose logging and debugging purposes that can be enabled via `DEBUG` environment variable set to `tardis*`.
 
 ## License
 
