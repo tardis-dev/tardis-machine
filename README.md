@@ -1,6 +1,6 @@
 # tardis-machine
 
-[tardis.dev](https://tardis.dev) is a CLI client with built-in local caching and streaming HTTP and WebSocket endpoints providing on-demand tick-level crypto market data replay from any point in time in exchange's Websocket data format.
+`tardis-machine` is a [tardis.dev](https://tardis.dev) CLI client with built-in local caching and streaming HTTP and WebSocket endpoints providing on-demand tick-level crypto market data replay from any point in time in exchange's Websocket data format.
 
 [![Version](https://img.shields.io/npm/v/tardis-machine.svg)](https://www.npmjs.org/package/tardis-machine)
 [![Try on RunKit](https://badge.runkitcdn.com/tardis-machine.svg)](https://runkit.com/npm/tardis-machine)
