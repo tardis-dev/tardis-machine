@@ -1,6 +1,6 @@
 # tardis-machine
 
-[tardis.dev](https://tardis.dev) API client with built-in local caching providing on-demand tick-level market data replay from any point in time in exchange's Websocket data format.
+[tardis.dev](https://tardis.dev) is a CLI client with built-in local caching and streaming HTTP and WebSocket endpoints providing on-demand tick-level crypto market data replay from any point in time in exchange's Websocket data format.
 
 [![Version](https://img.shields.io/npm/v/tardis-machine.svg)](https://www.npmjs.org/package/tardis-machine)
 [![Try on RunKit](https://badge.runkitcdn.com/tardis-machine.svg)](https://runkit.com/npm/tardis-machine)
@@ -26,7 +26,7 @@ Returns up to 400 000 messages per second (depending on the machine set-up and l
 | `exchange`           | `string`                                                                        | -             | requested exchange name. Check out [allowed echanges](https://github.com/tardis-dev/node-client/blob/master/src/consts.ts)                                                                                                                                                         |
 | `from`               | `string`                                                                        | -             | replay period start date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                                                                                                                                                                                                    |
 | `to`                 | `string`                                                                        | -             | replay period end date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                                                                                                                                                                                                      |
-| `filters` (optional) | `Url encoded JSON string with {channel:string, symbols?: string[]}[] structure` | undefined     | optional filters for requested data feed. Check out [allowed channels](https://github.com/tardis-dev/node-client/blob/master/src/consts.ts) for each exchange, up to date list of accepted symbols can be found via `https://tardis.dev/api/v1/exchanges/<EXCHANGE_NAME>` API call |
+| `filters` (optional) | `Url encoded JSON string with {channel:string, symbols?: string[]}[] structure` | undefined     | optional filters of requested data feed.  Use [/exchanges/:/exchange](https://docs.tardis.dev/api#exchanges-exchange) API call to get allowed channel names and symbols for requested exchange |
 
 #### Example response snippet:
 
@@ -182,13 +182,12 @@ In contrast to HTTP API for WebSocket API filters aren't provided explicitly as 
 
 ## FAQ
 
-#### Order book snapshots
-
-Order book snapshots are always available at the beginning of the day ( 00:00 UTC) and/or when websocket connection was restarted by exchange itself.
-
 #### How to debug it if something went wrong?
 
 tardis-machine uses [debug](https://github.com/visionmedia/debug) package for verbose logging and debugging purposes that can be enabled via `DEBUG` environment variable set to `tardis*`.
+
+#### Where can I find more details about tardis.dev API?
+Check out [API docs](https://docs.tardis.dev/api).
 
 ## License
 
