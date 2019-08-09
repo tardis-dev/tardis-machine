@@ -120,13 +120,29 @@ const okexMapper: SubscriptionMapper = {
   }
 }
 
+const ftxMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.op === 'subscribe'
+  },
+
+  map: (message: any) => {
+    return [
+      {
+        channel: message.channel,
+        symbols: [message.market]
+      }
+    ]
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]?: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
   deribit: deribitMapper,
   cryptofacilities: cryptofacilitiesMapper,
   bitstamp: bitstampMapper,
-  okex: okexMapper
+  okex: okexMapper,
+  ftx: ftxMapper
 }
 
 export type SubscriptionMapper = {

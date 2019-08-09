@@ -39,7 +39,7 @@
     "debug": "^4.1.1",
     "find-my-way": "^2.0.1",
     "is-docker": "^2.0.0",
-    "tardis-client": "^1.0.0",
+    "tardis-client": "^1.1.2",
     "yargs": "^13.2.4",
     "ws": "^7.0.0"
   },
@@ -49,7 +49,6 @@
     "@types/node": "^12.0.3",
     "@types/node-fetch": "^2.3.5",
     "@types/split2": "^2.1.6",
-    
     "@types/yargs": "^13.0.0",
     "bitmex-realtime-api": "^0.4.0",
     "cross-var": "^1.1.0",
