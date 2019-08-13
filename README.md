@@ -1,6 +1,6 @@
 # tardis-machine
 
-`tardis-machine` is a [tardis.dev](https://tardis.dev) CLI client with built-in local caching, exposing streaming HTTP and WebSocket endpoints providing on-demand tick-level crypto market data replay from any point in time in exchange's Websocket data format.
+`tardis-machine` is a fast locally installable server with built-in local caching, that uses [tardis.dev HTTP API](https://app.gitbook.com/@tardisdev/s/workspace/api#http-api) under the hood. It provides streaming HTTP and WebSocket endpoints that offer on-demand tick-level crypto market data replay from any moment in time in exchange's Websocket data format.
 
 [![Version](https://img.shields.io/npm/v/tardis-machine.svg)](https://www.npmjs.org/package/tardis-machine)
 [![Try on RunKit](https://badge.runkitcdn.com/tardis-machine.svg)](https://runkit.com/npm/tardis-machine)
@@ -78,7 +78,7 @@ In many cases such websocket historical data feeds can be consumed using already
 **That opens the possibility of having single data pipeline for real-time trading and backtesting.**
 
 ```js
-// tardis machine can be run via CLI or inside Docker container as well
+// tardis machine can be installed as npm CLI or run as Docker container as well
 const { TardisMachine } = require('tardis-machine')
 const BitMEXClient = require('bitmex-realtime-api')
 const PORT = 8072
