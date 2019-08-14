@@ -39,7 +39,7 @@
     "debug": "^4.1.1",
     "find-my-way": "^2.0.1",
     "is-docker": "^2.0.0",
-    "tardis-client": "^1.1.2",
+    "tardis-client": "^1.2",
     "yargs": "^13.2.4",
     "ws": "^7.0.0"
   },
