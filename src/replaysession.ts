@@ -6,6 +6,8 @@ import { subscriptionsMappers, SubscriptionMapper } from './mappers'
 
 const debug = dbg('tardis-machine')
 
+const wait = (delayMS: number) => new Promise(resolve => setTimeout(resolve, delayMS))
+
 export class ReplaySession {
   private readonly _connections: WebsocketConnection[] = []
   private _hasStarted: boolean = false
@@ -90,7 +92,7 @@ export class ReplaySession {
 
       // let's wait until buffer is empty before closing normal connections
       while (!error && connection.bufferedAmount > 0) {
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await wait(100)
       }
 
       connection.close(error)
@@ -151,9 +153,7 @@ export class WebsocketConnection {
   public startReplayingDataFeed() {
     if (this._subscriptionsCount === 0) {
       throw new Error(
-        `No subscriptions received for websocket connection, exchange ${this._replayOptions.exchange}, from ${
-          this._replayOptions.from
-        }, to ${this._replayOptions.to}`
+        `No subscriptions received for websocket connection, exchange ${this._replayOptions.exchange}, from ${this._replayOptions.from}, to ${this._replayOptions.to}`
       )
     }
 
@@ -190,13 +190,13 @@ export class WebsocketConnection {
     for await (let { message } of dataFeedMessages) {
       buffered.push(message)
       if (buffered.length == 10) {
-        this._sendBatch(buffered)
+        await this._sendBatch(buffered)
         buffered = []
       }
     }
 
     if (buffered.length > 0) {
-      this._sendBatch(buffered)
+      await this._sendBatch(buffered)
     }
   }
 
@@ -204,12 +204,23 @@ export class WebsocketConnection {
     return `${JSON.stringify(this._replayOptions)}`
   }
 
-  private _sendBatch(batch: Buffer[]) {
+  private async _sendBatch(batch: Buffer[]) {
     this._checkConnection()
+    await this._waitForEmptyBuffer()
+
     for (let i = 0; i < batch.length; i++) {
       this._websocket.send(batch[i], {
         binary: false
       })
+    }
+  }
+
+  private async _waitForEmptyBuffer() {
+    // wait until  buffer is empty
+    // sometimes slow clients can't keep up with messages arrival rate so we need to throttle
+    // https://nodejs.org/api/net.html#net_socket_buffersize
+    while (this.bufferedAmount > 0) {
+      await wait(30)
     }
   }
 
@@ -227,6 +238,8 @@ export class WebsocketConnection {
 
     for await (let { message, localTimestamp } of dataFeedMessages) {
       this._checkConnection()
+      await this._waitForEmptyBuffer()
+
       this._websocket.send(message, {
         binary: false
       })
