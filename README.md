@@ -48,7 +48,7 @@ Returns up to 400 000 messages per second (depending on the machine set-up and l
 
 ## WebSocket endpoint
 
-Accessible via **`/ws-replay/?exchange=<EXCHANGE>&from=<FROM_DATE>&to=<TO_DATE>`**
+Accessible via **`/ws-replay?exchange=<EXCHANGE>&from=<FROM_DATE>&to=<TO_DATE>`**
 
 Exchanges & various 3rd party data providers WebSocket APIs allows subscribing only to real-time data feeds and there is no way to subscribe to and **"replay"** market from any point in the past. By using `tardis-machine` that is now possible.
 
