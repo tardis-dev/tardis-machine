@@ -21,12 +21,12 @@ Returns up to 400 000 messages per second (depending on the machine set-up and l
 
 #### Available query string params params:
 
-| name                 | type                                                                            | default value | description                                                                                                                                                                                                                                                                        |
-| -------------------- | ------------------------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `exchange`           | `string`                                                                        | -             | requested exchange name. Check out [allowed echanges](https://github.com/tardis-dev/node-client/blob/master/src/consts.ts)                                                                                                                                                         |
-| `from`               | `string`                                                                        | -             | replay period start date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                                                                                                                                                                                                    |
-| `to`                 | `string`                                                                        | -             | replay period end date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                                                                                                                                                                                                      |
-| `filters` (optional) | `Url encoded JSON string with {channel:string, symbols?: string[]}[] structure` | undefined     | optional filters of requested data feed.  Use [/exchanges/:/exchange](https://docs.tardis.dev/api#exchanges-exchange) API call to get allowed channel names and symbols for requested exchange |
+| name                 | type                                                                            | default value | description                                                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `exchange`           | `string`                                                                        | -             | requested exchange name. Check out [allowed echanges](https://github.com/tardis-dev/node-client/blob/master/src/consts.ts)                                                                    |
+| `from`               | `string`                                                                        | -             | replay period start date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                                                                                                               |
+| `to`                 | `string`                                                                        | -             | replay period end date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                                                                                                                 |
+| `filters` (optional) | `Url encoded JSON string with {channel:string, symbols?: string[]}[] structure` | undefined     | optional filters of requested data feed. Use [/exchanges/:/exchange](https://docs.tardis.dev/api#exchanges-exchange) API call to get allowed channel names and symbols for requested exchange |
 
 #### Example response snippet:
 
@@ -110,11 +110,11 @@ Check out [tests](https://github.com/tardis-dev/tardis-machine/blob/master/test/
 
 In contrast to HTTP API for WebSocket API filters aren't provided explicitly as those are created based on `subscribe` messages over WebSocket received in first 5 seconds of the connection.
 
-| name       | type     | default value | description                                                                                                 |
-| ---------- | -------- | ------------- | ----------------------------------------------------------------------------------------------------------- |
-| `exchange` | `string` | -             | requested exchange name. Currently supported: `bitmex, coinbase, deribit, cryptofacilities, bitstamp, okex` |
-| `from`     | `string` | -             | replay period start date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                             |
-| `to`       | `string` | -             | replay period start date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                             |
+| name       | type     | default value | description                                                                                                                                |
+| ---------- | -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `exchange` | `string` | -             | requested exchange name. Currently supported: `bitmex, coinbase, deribit, cryptofacilities, bitstamp, okex, ftx, kraken, bitflyer, gemini` |
+| `from`     | `string` | -             | replay period start date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                                                            |
+| `to`       | `string` | -             | replay period start date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                                                            |
 
 ## Installation
 
@@ -187,6 +187,7 @@ In contrast to HTTP API for WebSocket API filters aren't provided explicitly as 
 tardis-machine uses [debug](https://github.com/visionmedia/debug) package for verbose logging and debugging purposes that can be enabled via `DEBUG` environment variable set to `tardis*`.
 
 #### Where can I find more details about tardis.dev API?
+
 Check out [API docs](https://docs.tardis.dev/api).
 
 ## License

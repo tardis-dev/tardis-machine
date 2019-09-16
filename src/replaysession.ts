@@ -262,6 +262,7 @@ export class WebsocketConnection {
         debug('Ignored websocket message %s', message)
       }
     } catch (e) {
+      console.error('_convertSubscribeRequestToFilter Error', e)
       debug('Ignored websocket message %s, error %o', message, e)
     }
   }
