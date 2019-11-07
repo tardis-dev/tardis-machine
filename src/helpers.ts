@@ -1,0 +1,188 @@
+import {
+  ReplayNormalizedOptions,
+  normalizeTrades,
+  normalizeBookChanges,
+  normalizeDerivativeTickers,
+  MapperFactory,
+  ComputableFactory,
+  computeTradeBars,
+  computeBookSnapshots
+} from 'tardis-dev'
+
+export type Options = ReplayNormalizedOptions<any, any> & {
+  dataTypes: string[]
+}
+
+export type ReplayNormalizedOptions = Options | Options[]
+
+export function* getNormalizers(dataTypes: string[]): IterableIterator<MapperFactory<any, any>> {
+  if (dataTypes.includes('trade') || dataTypes.some(dataType => dataType.startsWith('trade_bar_'))) {
+    yield normalizeTrades
+  }
+  if (
+    dataTypes.includes('book_change') ||
+    dataTypes.some(dataType => dataType.startsWith('book_snapshot_')) ||
+    dataTypes.some(dataType => dataType.startsWith('quote'))
+  ) {
+    yield normalizeBookChanges
+  }
+
+  if (dataTypes.includes('derivative_ticker')) {
+    normalizeDerivativeTickers
+  }
+}
+
+export function getRequestedDataTypes(options: Options) {
+  return options.dataTypes.map(dataType => {
+    if (dataType.startsWith('trade_bar_')) {
+      return 'trade_bar'
+    }
+    if (dataType.startsWith('book_snapshot_')) {
+      return 'book_snapshot'
+    }
+
+    if (dataType.startsWith('quote')) {
+      return 'book_snapshot'
+    }
+
+    return dataType
+  })
+}
+
+const tradeBarSuffixToKindMap = {
+  ms: {
+    kind: 'time',
+    multiplier: 1
+  },
+  s: {
+    kind: 'time',
+    multiplier: 1000
+  },
+  m: {
+    kind: 'time',
+    multiplier: 60 * 1000
+  },
+
+  ticks: {
+    kind: 'tick',
+    multiplier: 1
+  },
+  vol: {
+    kind: 'volume',
+    multiplier: 1
+  }
+} as const
+
+const bookSnapshotsToIntervalMultiplierMap = {
+  ms: {
+    multiplier: 1
+  },
+  s: {
+    multiplier: 1000
+  },
+  m: {
+    multiplier: 60 * 1000
+  }
+} as const
+
+const getKeys = <T extends {}>(o: T): Array<keyof T> => <Array<keyof T>>Object.keys(o)
+
+export function getComputables(dataTypes: string[]): ComputableFactory<any>[] {
+  const computables = []
+
+  for (const dataType of dataTypes) {
+    if (dataType.startsWith('trade_bar')) {
+      computables.push(parseAsTradeBarComputable(dataType))
+    }
+
+    if (dataType.startsWith('book_snapshot')) {
+      computables.push(parseAsBookSnapshotComputable(dataType))
+    }
+
+    if (dataType.startsWith('quote')) {
+      computables.push(parseAsQuoteComputable(dataType))
+    }
+  }
+
+  return computables
+}
+
+function parseAsTradeBarComputable(dataType: string) {
+  for (const suffix of getKeys(tradeBarSuffixToKindMap)) {
+    if (dataType.endsWith(suffix) === false) {
+      continue
+    }
+
+    const intervalString = dataType.replace('trade_bar_', '').replace(suffix, '')
+    const interval = Number(intervalString)
+    if (interval === NaN) {
+      throw new Error(`invalid interval: ${intervalString}, data type: ${dataType}`)
+    }
+
+    return computeTradeBars({
+      interval: tradeBarSuffixToKindMap[suffix].multiplier * interval,
+      kind: tradeBarSuffixToKindMap[suffix].kind,
+      name: dataType
+    })
+  }
+
+  throw new Error(`invalid data type: ${dataType}`)
+}
+
+function parseAsBookSnapshotComputable(dataType: string) {
+  for (const suffix of getKeys(bookSnapshotsToIntervalMultiplierMap)) {
+    if (dataType.endsWith(suffix) === false) {
+      continue
+    }
+    const values = dataType.replace('book_snapshot_', '')
+    const depthString = values.slice(0, values.indexOf('_'))
+    const depth = Number(depthString)
+    if (depth === NaN) {
+      throw new Error(`invalid depth: ${depthString}, data type: ${dataType}`)
+    }
+
+    const intervalString = values.slice(values.indexOf('_') + 1).replace(suffix, '')
+
+    const interval = Number(intervalString)
+    if (interval === NaN) {
+      throw new Error(`invalid interval: ${intervalString}, data type: ${dataType}`)
+    }
+
+    return computeBookSnapshots({
+      interval: bookSnapshotsToIntervalMultiplierMap[suffix].multiplier * interval,
+      depth,
+      name: dataType
+    })
+  }
+
+  throw new Error(`invalid data type: ${dataType}`)
+}
+
+function parseAsQuoteComputable(dataType: string) {
+  if (dataType === 'quote') {
+    return computeBookSnapshots({
+      interval: 0,
+      depth: 1,
+      name: dataType
+    })
+  }
+
+  for (const suffix of getKeys(bookSnapshotsToIntervalMultiplierMap)) {
+    if (dataType.endsWith(suffix) === false) {
+      continue
+    }
+    const intervalString = dataType.replace('quote_', '').replace(suffix, '')
+    const interval = Number(intervalString)
+    if (interval === NaN) {
+      throw new Error(`invalid interval: ${intervalString}, data type: ${dataType}`)
+    }
+
+    return computeBookSnapshots({
+      interval: bookSnapshotsToIntervalMultiplierMap[suffix].multiplier * interval,
+      depth: 1,
+      name: dataType
+    })
+  }
+
+  throw new Error(`invalid data type: ${dataType}`)
+}

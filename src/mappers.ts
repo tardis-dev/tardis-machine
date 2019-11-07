@@ -1,4 +1,4 @@
-import { Filter, Exchange } from 'tardis-client'
+import { Filter, Exchange } from 'tardis-node'
 
 // https://www.bitmex.com/app/wsAPI
 const bitmexMapper: SubscriptionMapper = {
@@ -37,7 +37,7 @@ const coinbaseMaper: SubscriptionMapper = {
     const channelMappings = {
       full: ['received', 'open', 'done', 'match', 'change'],
       level2: ['snapshot', 'l2update'],
-      match: ['match', 'last_match'],
+      matches: ['match', 'last_match'],
       ticker: ['ticker']
     }
 

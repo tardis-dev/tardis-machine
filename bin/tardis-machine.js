@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
 const yargs = require('yargs')
-const { TardisClient } = require('tardis-client')
+const os = require('os')
+const path = require('path')
+
 const { TardisMachine } = require('../dist')
 
 const DEFAULT_PORT = 8000
@@ -17,7 +19,7 @@ const argv = yargs
   .option('cache-dir', {
     type: 'string',
     describe: 'Local cache dir path ',
-    default: TardisClient._defaultOptions.cacheDir
+    default: path.join(os.tmpdir(), '.tardis-cache')
   })
   .option('clear-cache', {
     type: 'boolean',
@@ -34,7 +36,7 @@ const argv = yargs
   .version()
   .usage('$0 [options]')
   .example('$0 --api-key=YOUR_API_KEY')
-  .epilogue('Check out https://tardis.dev for more information.')
+  .epilogue('See https://docs.tardis.dev/api/tardis-machine for more information.')
   .detectLocale(false).argv
 
 // if port ENV is defined use it otherwise use provided options
