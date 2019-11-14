@@ -3,22 +3,22 @@ import { IncomingMessage, OutgoingMessage, ServerResponse } from 'http'
 import { combine, compute, replayNormalized } from 'tardis-dev'
 import url from 'url'
 import { debug } from '../debug'
-import { getComputables, getNormalizers, ReplayNormalizedOptions, constructDataTypeFilter } from '../helpers'
+import { getComputables, getNormalizers, ReplayNormalizedRequestOptions, constructDataTypeFilter } from '../helpers'
 
 export const replayNormalizedHttp = async (req: IncomingMessage, res: ServerResponse) => {
   try {
     const startTimestamp = new Date().getTime()
     const parsedQuery = url.parse(req.url!, true).query
     const optionsString = parsedQuery['options'] as string
-    const replayNormalizedOptions = JSON.parse(optionsString) as ReplayNormalizedOptions
+    const replayNormalizedOptions = JSON.parse(optionsString) as ReplayNormalizedRequestOptions
 
-    debug('GET /replay-normalized request started, options: %o, include local timestamps', replayNormalizedOptions)
+    debug('GET /replay-normalized request started, options: %o', replayNormalizedOptions)
 
     const streamedMessagesCount = await writeMessagesToResponse(res, replayNormalizedOptions)
     const endTimestamp = new Date().getTime()
 
     debug(
-      'GET /replay-normalized request finished, options: %o, time: %d seconds, total messages count:%d',
+      'GET /replay-normalized request finished, options: %o, time: %d seconds, total messages count: %d',
       replayNormalizedOptions,
       (endTimestamp - startTimestamp) / 1000,
       streamedMessagesCount
@@ -40,7 +40,7 @@ export const replayNormalizedHttp = async (req: IncomingMessage, res: ServerResp
   }
 }
 
-async function writeMessagesToResponse(res: OutgoingMessage, options: ReplayNormalizedOptions) {
+async function writeMessagesToResponse(res: OutgoingMessage, options: ReplayNormalizedRequestOptions) {
   const BATCH_SIZE = 32
 
   res.setHeader('Content-Type', 'application/json')
