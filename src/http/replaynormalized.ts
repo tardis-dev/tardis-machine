@@ -2,9 +2,8 @@ import { once } from 'events'
 import { IncomingMessage, OutgoingMessage, ServerResponse } from 'http'
 import { combine, compute, replayNormalized } from 'tardis-dev'
 import url from 'url'
-
 import { debug } from '../debug'
-import { getComputables, getNormalizers, getRequestedDataTypes, ReplayNormalizedOptions } from '../helpers'
+import { getComputables, getNormalizers, ReplayNormalizedOptions, constructDataTypeFilter } from '../helpers'
 
 export const replayNormalizedHttp = async (req: IncomingMessage, res: ServerResponse) => {
   try {
@@ -64,21 +63,15 @@ async function writeMessagesToResponse(res: OutgoingMessage, options: ReplayNorm
     return messages
   })
 
-  const requestedDataTypesPerExchange = replayNormalizedOptions.reduce(
-    (prev, current) => {
-      prev[current.exchange] = getRequestedDataTypes(current)
-      return prev
-    },
-    {} as any
-  )
+  const filterByDataType = constructDataTypeFilter(replayNormalizedOptions)
 
   const messages = messagesIterables.length === 1 ? messagesIterables[0] : combine(...messagesIterables)
 
   for await (const message of messages) {
     // filter out messages not explicitly requested via options.dataTypes
     // eg.: return only book_snapshots when someone asked only for those
-    // as by default also book_changes are returned
-    if (message.type !== 'disconnect' && requestedDataTypesPerExchange[message.exchange].includes(message.type) === false) {
+    // as by default also book_changes are returned as well
+    if (filterByDataType(message) === false) {
       continue
     }
 

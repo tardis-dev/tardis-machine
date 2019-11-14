@@ -6,8 +6,11 @@ import {
   MapperFactory,
   ComputableFactory,
   computeTradeBars,
-  computeBookSnapshots
+  computeBookSnapshots,
+  NormalizedData,
+  Disconnect
 } from 'tardis-dev'
+import { Transform, TransformCallback } from 'stream'
 
 export type Options = ReplayNormalizedOptions<any, any> & {
   dataTypes: string[]
@@ -32,7 +35,7 @@ export function* getNormalizers(dataTypes: string[]): IterableIterator<MapperFac
   }
 }
 
-export function getRequestedDataTypes(options: Options) {
+function getRequestedDataTypes(options: Options) {
   return options.dataTypes.map(dataType => {
     if (dataType.startsWith('trade_bar_')) {
       return 'trade_bar'
@@ -47,6 +50,24 @@ export function getRequestedDataTypes(options: Options) {
 
     return dataType
   })
+}
+
+export function constructDataTypeFilter(options: Options[]) {
+  const requestedDataTypesPerExchange = options.reduce(
+    (prev, current) => {
+      prev[current.exchange] = getRequestedDataTypes(current)
+      return prev
+    },
+    {} as any
+  )
+
+  return (message: NormalizedData | Disconnect) => {
+    if (message.type === 'disconnect') {
+      return true
+    }
+
+    return requestedDataTypesPerExchange[message.exchange].includes(message.type)
+  }
 }
 
 const tradeBarSuffixToKindMap = {
@@ -185,4 +206,20 @@ function parseAsQuoteComputable(dataType: string) {
   }
 
   throw new Error(`invalid data type: ${dataType}`)
+}
+
+export class FilterAndStringifyStream extends Transform {
+  constructor(private readonly filter: (message: any) => boolean) {
+    super({
+      objectMode: true
+    })
+  }
+
+  _transform(chunk: any, _encoding: string, callback: TransformCallback) {
+    if (this.filter(chunk)) {
+      this.push(JSON.stringify(chunk))
+    }
+
+    callback()
+  }
 }
