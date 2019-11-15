@@ -1,2 +1,2 @@
 import dbg from 'debug'
-export const debug = dbg('tardis-dev')
+export const debug = dbg('tardis-dev:machine')

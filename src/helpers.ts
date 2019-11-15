@@ -1,22 +1,29 @@
-import {
-  ReplayNormalizedOptions,
-  normalizeTrades,
-  normalizeBookChanges,
-  normalizeDerivativeTickers,
-  MapperFactory,
-  ComputableFactory,
-  computeTradeBars,
-  computeBookSnapshots,
-  NormalizedData,
-  Disconnect
-} from 'tardis-dev'
 import { Transform, TransformCallback } from 'stream'
+import {
+  ComputableFactory,
+  computeBookSnapshots,
+  computeTradeBars,
+  Disconnect,
+  MapperFactory,
+  normalizeBookChanges,
+  NormalizedData,
+  normalizeDerivativeTickers,
+  normalizeTrades,
+  ReplayNormalizedOptions,
+  StreamNormalizedOptions
+} from 'tardis-dev'
 
-export type Options = ReplayNormalizedOptions<any, any> & {
+export type WithDataType = {
   dataTypes: string[]
 }
 
-export type ReplayNormalizedOptions = Options | Options[]
+export type ReplayNormalizedOptionsWithDataType = ReplayNormalizedOptions<any, any> & WithDataType
+
+export type ReplayNormalizedRequestOptions = ReplayNormalizedOptionsWithDataType | ReplayNormalizedOptionsWithDataType[]
+
+export type StreamNormalizedOptionsWithDataType = StreamNormalizedOptions<any, any> & WithDataType
+
+export type StreamNormalizedRequestOptions = StreamNormalizedOptionsWithDataType | StreamNormalizedOptionsWithDataType[]
 
 export function* getNormalizers(dataTypes: string[]): IterableIterator<MapperFactory<any, any>> {
   if (dataTypes.includes('trade') || dataTypes.some(dataType => dataType.startsWith('trade_bar_'))) {
@@ -35,7 +42,7 @@ export function* getNormalizers(dataTypes: string[]): IterableIterator<MapperFac
   }
 }
 
-function getRequestedDataTypes(options: Options) {
+function getRequestedDataTypes(options: ReplayNormalizedOptionsWithDataType | StreamNormalizedOptionsWithDataType) {
   return options.dataTypes.map(dataType => {
     if (dataType.startsWith('trade_bar_')) {
       return 'trade_bar'
@@ -52,14 +59,11 @@ function getRequestedDataTypes(options: Options) {
   })
 }
 
-export function constructDataTypeFilter(options: Options[]) {
-  const requestedDataTypesPerExchange = options.reduce(
-    (prev, current) => {
-      prev[current.exchange] = getRequestedDataTypes(current)
-      return prev
-    },
-    {} as any
-  )
+export function constructDataTypeFilter(options: (ReplayNormalizedOptionsWithDataType | StreamNormalizedOptionsWithDataType)[]) {
+  const requestedDataTypesPerExchange = options.reduce((prev, current) => {
+    prev[current.exchange] = getRequestedDataTypes(current)
+    return prev
+  }, {} as any)
 
   return (message: NormalizedData | Disconnect) => {
     if (message.type === 'disconnect') {
@@ -223,3 +227,5 @@ export class FilterAndStringifyStream extends Transform {
     callback()
   }
 }
+
+export const wait = (delayMS: number) => new Promise(resolve => setTimeout(resolve, delayMS))

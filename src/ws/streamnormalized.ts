@@ -22,7 +22,7 @@ export async function streamNormalizedWS(ws: WebSocket, req: IncomingMessage) {
     const optionsString = parsedQuery['options'] as string
     const streamNormalizedOptions = JSON.parse(optionsString) as StreamNormalizedRequestOptions
 
-    debug('WebSocket /stream-normalized started, options: %o', streamNormalizedOptions)
+    debug('WebSocket /ws/stream-normalized started, options: %o', streamNormalizedOptions)
 
     const options = Array.isArray(streamNormalizedOptions) ? streamNormalizedOptions : [streamNormalizedOptions]
 
@@ -50,14 +50,14 @@ export async function streamNormalizedWS(ws: WebSocket, req: IncomingMessage) {
     const endTimestamp = new Date().getTime()
 
     debug(
-      'WebSocket /stream-normalized finished, options: %o, time: %d seconds',
+      'WebSocket /ws/stream-normalized finished, options: %o, time: %d seconds',
       streamNormalizedOptions,
       (endTimestamp - startTimestamp) / 1000
     )
   } catch (e) {
     ws.close(1011, e.toString())
 
-    debug('WebSocket /stream-normalized  error: %o', e)
-    console.error('WebSocket /stream-normalized error:', e)
+    debug('WebSocket /ws/stream-normalized  error: %o', e)
+    console.error('WebSocket /ws/stream-normalized error:', e)
   }
 }

@@ -251,7 +251,7 @@ const huobiMapper: SubscriptionMapper = {
   },
 
   map: (message: any) => {
-    const pieces = message.syb.split('.')
+    const pieces = message.sub.split('.')
     return [
       {
         channel: pieces[1],
@@ -269,7 +269,7 @@ const bybitMapper: SubscriptionMapper = {
 
   map: (message: any) => {
     return (message.args as string[]).map(arg => {
-      const pieces = message.syb.split('.')
+      const pieces = arg.split('.')
 
       return {
         channel: pieces[0],

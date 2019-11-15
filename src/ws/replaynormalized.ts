@@ -22,7 +22,7 @@ export async function replayNormalizedWS(ws: WebSocket, req: IncomingMessage) {
     const optionsString = parsedQuery['options'] as string
     const replayNormalizedOptions = JSON.parse(optionsString) as ReplayNormalizedRequestOptions
 
-    debug('WebSocket /replay-normalized started, options: %o', replayNormalizedOptions)
+    debug('WebSocket /ws/replay-normalized started, options: %o', replayNormalizedOptions)
 
     const options = Array.isArray(replayNormalizedOptions) ? replayNormalizedOptions : [replayNormalizedOptions]
 
@@ -50,13 +50,13 @@ export async function replayNormalizedWS(ws: WebSocket, req: IncomingMessage) {
     const endTimestamp = new Date().getTime()
 
     debug(
-      'WebSocket /replay-normalized finished, options: %o, time: %d seconds',
+      'WebSocket /ws/replay-normalized finished, options: %o, time: %d seconds',
       replayNormalizedOptions,
       (endTimestamp - startTimestamp) / 1000
     )
   } catch (e) {
     ws.close(1011, e.toString())
-    debug('WebSocket /replay-normalized  error: %o', e)
-    console.error('WebSocket /replay-normalized error:', e)
+    debug('WebSocket /ws/replay-normalized  error: %o', e)
+    console.error('WebSocket /ws/replay-normalized error:', e)
   }
 }

@@ -1,97 +1,66 @@
-import http, { OutgoingMessage, IncomingMessage } from 'http'
-import { once } from 'events'
-import url from 'url'
-import dbg from 'debug'
 import findMyWay from 'find-my-way'
+import http from 'http'
 import isDocker from 'is-docker'
+import { clearCache, init } from 'tardis-dev'
+import url from 'url'
 import WebSocket from 'ws'
-import { TardisClient, ReplayOptions, Exchange } from 'tardis-client'
-import { ReplaySession, WebsocketConnection } from './replaysession'
-
-const debug = dbg('tardis-machine')
+import { bitmexWsHelp, replayHttp, replayNormalizedHttp } from './http'
+import { replayNormalizedWS, replayWS, streamNormalizedWS } from './ws'
 
 export class TardisMachine {
-  private readonly _tardisClient: TardisClient
   private readonly _httpServer: http.Server
-  private readonly _replaySessionsMeta: { sessionKey: string; session: ReplaySession }[] = []
 
   constructor(private readonly options: Options) {
-    this._tardisClient = new TardisClient({
+    init({
       apiKey: options.apiKey,
       cacheDir: options.cacheDir
     })
 
     const router = findMyWay({ ignoreTrailingSlash: true })
+
     this._httpServer = http.createServer((req, res) => {
       router.lookup(req, res)
-    })
-
-    // setup /replay streaming http route
-    router.on('GET', '/replay', async (req, res) => {
-      try {
-        const startTimestamp = new Date().getTime()
-        const parsedQuery = url.parse(req.url!, true).query
-        const filtersQuery = parsedQuery['filters'] as string
-
-        const replayOptions: ReplayOptions<any> = {
-          exchange: parsedQuery['exchange'] as string,
-          from: parsedQuery['from'] as string,
-          to: parsedQuery['to'] as string,
-          filters: filtersQuery ? JSON.parse(filtersQuery) : undefined
-        }
-
-        debug('GET /replay request started, options: %o', replayOptions)
-
-        const streamedMessagesCount = await this._writeDataFeedMessagesToResponse(res, replayOptions)
-        const endTimestamp = new Date().getTime()
-
-        debug(
-          'GET /replay request finished, options: %o, time: %d seconds, total messages count:%d',
-          replayOptions,
-          (endTimestamp - startTimestamp) / 1000,
-          streamedMessagesCount
-        )
-      } catch (e) {
-        const errorInfo = {
-          responseText: e.responseText,
-          message: e.message,
-          url: e.url
-        }
-
-        debug('GET /replay request error: %o', e)
-        console.error('GET /replay request error:', e)
-
-        if (!res.finished) {
-          res.statusCode = e.status || 500
-          res.end(JSON.stringify(errorInfo))
-        }
-      }
     })
 
     // set timeout to 0 meaning infinite http timout - streaming may take some time expecially for longer date ranges
     this._httpServer.timeout = 0
 
-    const websocketServer = new WebSocket.Server({ noServer: true })
+    router.on('GET', '/replay', replayHttp)
+    router.on('GET', '/replay-normalized', replayNormalizedHttp)
+    router.on('GET', '/api/v1/schema/websocketHelp', bitmexWsHelp)
 
-    this._httpServer.on('upgrade', function upgrade(request, socket, head) {
-      const pathname = url.parse(request.url).pathname
-      // setup websocket server for /ws-replay path
-      if (pathname === '/ws-replay') {
-        websocketServer.handleUpgrade(request, socket, head, function done(ws) {
-          websocketServer.emit('connection', ws, request)
-        })
+    this._initWebSocketServer()
+  }
+
+  private _initWebSocketServer() {
+    const websocketServer = new WebSocket.Server({ server: this._httpServer })
+
+    // super simple routing for websocket routes
+    const routes = {
+      '/ws/replay': replayWS,
+      '/ws/replay-normalized': replayNormalizedWS,
+      '/ws/stream-normalized': streamNormalizedWS
+    } as any
+
+    websocketServer.on('connection', async (ws, request) => {
+      const path = url
+        .parse(request.url!)
+        .pathname!.replace(/\/$/, '')
+        .toLocaleLowerCase()
+
+      const matchingRoute = routes[path]
+
+      if (matchingRoute !== undefined) {
+        matchingRoute(ws, request)
       } else {
-        socket.destroy()
+        ws.close(1008)
       }
     })
-
-    websocketServer.on('connection', this._addToOrCreateNewReplaySession.bind(this))
-    this._setUpWebsocketClientsRelatedRoutesRoutes(router)
   }
 
   public async run(port: number) {
     if (this.options.clearCache) {
-      await this._tardisClient.clearCache()
+      await clearCache()
     }
 
     await new Promise((resolve, reject) => {
@@ -104,14 +73,12 @@ export class TardisMachine {
     })
 
     if (isDocker() && !process.env.RUNKIT_HOST) {
-      console.log(`TardisMachine is running inside Docker container...`)
+      console.log(`tardis-machine is running inside Docker container...`)
     } else {
-      console.log(`TardisMachine is running...`)
-      console.log(`--> HTTP endpoint: http://localhost:${port}/replay`)
-      console.log(`--> WebSocket endpoint: http://localhost:${port}/ws-replay`)
+      console.log(`tardis-machine is running on ${port} port...`)
     }
 
-    console.log(`Check out https://tardis.dev for help or more information.`)
+    console.log(`See https://docs.tardis.dev/api/tardis-machine for more information.`)
   }
 
   public async stop() {
@@ -119,122 +86,6 @@ export class TardisMachine {
       this._httpServer.close(err => {
         err ? reject(err) : resolve()
       })
-    })
-  }
-
-  private async _addToOrCreateNewReplaySession(ws: WebSocket, upgReq: IncomingMessage) {
-    const parsedQuery = url.parse(upgReq.url!, true).query
-    const from = parsedQuery['from'] as string
-    const to = parsedQuery['to'] as string
-    const replaySessionKey = `${from}-${to}`
-
-    // if there are multiple separate ws connections being made for the same date ranges
-    // in short time frame (5 seconds)
-    // consolidate them in single replay session that will make sure that messages being send via websockets connections
-    // are be synchronized by local timestamp
-
-    const matchingReplaySessionMeta = this._replaySessionsMeta.find(s => s.sessionKey == replaySessionKey && s.session.hasStarted == false)
-
-    if (matchingReplaySessionMeta) {
-      matchingReplaySessionMeta.session.addToSession(new WebsocketConnection(ws, this._tardisClient, parsedQuery))
-    } else {
-      const newReplaySession = new ReplaySession()
-      const meta = {
-        sessionKey: replaySessionKey,
-        session: newReplaySession
-      }
-
-      this._replaySessionsMeta.push(meta)
-
-      newReplaySession.addToSession(new WebsocketConnection(ws, this._tardisClient, parsedQuery))
-
-      newReplaySession.onClose(() => {
-        const toRemove = this._replaySessionsMeta.indexOf(meta)
-        this._replaySessionsMeta.splice(toRemove, 1)
-      })
-    }
-  }
-
-  private async _writeDataFeedMessagesToResponse<T extends Exchange>(res: OutgoingMessage, options: ReplayOptions<T>) {
-    const responsePrefixBuffer = Buffer.from('{"localTimestamp":"')
-    const responseMiddleBuffer = Buffer.from('","message":')
-    const responseSuffixBuffer = Buffer.from('}\n')
-    const BATCH_SIZE = 32
-
-    // not 100% sure that's necessary since we're returning ndjson in fact, not json
-    res.setHeader('Content-Type', 'application/json')
-
-    let buffers: Buffer[] = []
-    let totalMessagesCount = 0
-
-    const dataFeedMessages = this._tardisClient.replayRaw(options)
-    for await (let { message, localTimestamp } of dataFeedMessages) {
-      totalMessagesCount++
-      // instead of writing each message directly to response,
-      // let's batch them and send in BATCH_SIZE  batches (each message is 5 buffers: prefix etc)
-      // also instead of converting messages to string or parsing them let's manually stich together desired json response using buffers which is faster
-      buffers.push(...[responsePrefixBuffer, localTimestamp, responseMiddleBuffer, message, responseSuffixBuffer])
-
-      if (buffers.length == BATCH_SIZE * 5) {
-        const ok = res.write(Buffer.concat(buffers))
-        buffers = []
-        // let's handle backpressure - https://nodejs.org/api/http.html#http_request_write_chunk_encoding_callback
-        if (!ok) {
-          await once(res, 'drain')
-        }
-      }
-    }
-
-    // write remaining buffers to response
-    if (buffers.length > 0) {
-      res.write(Buffer.concat(buffers))
-      buffers = []
-    }
-
-    res.end('')
-
-    return totalMessagesCount
-  }
-
-  private _setUpWebsocketClientsRelatedRoutesRoutes(router: findMyWay.Instance<findMyWay.HTTPVersion.V1>) {
-    // based on https://www.bitmex.com/api/v1/schema/websocketHelp
-    const bitmexWSHelpResponse = JSON.stringify({
-      info: 'See https://www.bitmex.com/app/wsAPI and https://www.bitmex.com/explorer for more documentation.',
-      usage: 'Send a message in the format: {"op": string, "args": Array<string>}',
-      ops: ['authKey', 'authKeyExpires', 'cancelAllAfter', 'subscribe', 'unsubscribe'],
-      subscribe: 'To subscribe, send: {"op": "subscribe", "args": [subscriptionTopic, ...]}.',
-      subscriptionSubjects: {
-        authenticationRequired: [],
-        public: [
-          'announcement',
-          'connected',
-          'chat',
-          'publicNotifications',
-          'instrument',
-          'settlement',
-          'funding',
-          'insurance',
-          'liquidation',
-          'orderBookL2',
-          'orderBookL2_25',
-          'orderBook10',
-          'quote',
-          'trade',
-          'quoteBin1m',
-          'quoteBin5m',
-          'quoteBin1h',
-          'quoteBin1d',
-          'tradeBin1m',
-          'tradeBin5m',
-          'tradeBin1h',
-          'tradeBin1d'
-        ]
-      }
-    })
-
-    router.on('GET', '/api/v1/schema/websocketHelp', async (_, res) => {
-      res.setHeader('Content-Type', 'application/json')
-      res.end(bitmexWSHelpResponse)
     })
   }
 }

@@ -3,7 +3,7 @@ import { IncomingMessage, OutgoingMessage, ServerResponse } from 'http'
 import { combine, compute, replayNormalized } from 'tardis-dev'
 import url from 'url'
 import { debug } from '../debug'
-import { getComputables, getNormalizers, ReplayNormalizedRequestOptions, constructDataTypeFilter } from '../helpers'
+import { constructDataTypeFilter, getComputables, getNormalizers, ReplayNormalizedRequestOptions } from '../helpers'
 
 export const replayNormalizedHttp = async (req: IncomingMessage, res: ServerResponse) => {
   try {
