@@ -1,4 +1,4 @@
-import { Filter, Exchange } from 'tardis-node'
+import { Exchange, Filter } from 'tardis-dev'
 
 // https://www.bitmex.com/app/wsAPI
 const bitmexMapper: SubscriptionMapper = {
@@ -209,7 +209,82 @@ const geminiMapper: SubscriptionMapper = {
   }
 }
 
-export const subscriptionsMappers: { [key in Exchange]?: SubscriptionMapper } = {
+// https://binance-docs.github.io/apidocs/futures/en/#live-subscribing-unsubscribing-to-streams
+const binanceMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.method === 'SUBSCRIBE'
+  },
+
+  map: (message: any) => {
+    return (message.params as string[]).map(param => {
+      const lastSeparator = param.lastIndexOf('@')
+      const firstSeparator = param.indexOf('@')
+
+      return {
+        channel: param.slice(firstSeparator + 1, lastSeparator == firstSeparator ? undefined : lastSeparator),
+        symbols: [param.slice(0, firstSeparator)]
+      }
+    })
+  }
+}
+
+// https://docs.binance.org/api-reference/dex-api/ws-connection.html
+const binanceDEXMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.method === 'subscribe'
+  },
+
+  map: (message: any) => {
+    return [
+      {
+        channel: message.topic,
+        symbols: message.symbols
+      }
+    ]
+  }
+}
+
+// https://huobiapi.github.io/docs/spot/v1/en/#websocket-market-data
+const huobiMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.sub !== undefined
+  },
+
+  map: (message: any) => {
+    const pieces = message.syb.split('.')
+    return [
+      {
+        channel: pieces[1],
+        symbols: [pieces[2]]
+      }
+    ]
+  }
+}
+
+// https://github.com/bybit-exchange/bybit-official-api-docs/blob/master/en/websocket.md
+const bybitMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.op === 'subscribe'
+  },
+
+  map: (message: any) => {
+    return (message.args as string[]).map(arg => {
+      const pieces = message.syb.split('.')
+
+      return {
+        channel: pieces[0],
+        symbols: [pieces[pieces.length - 1]]
+      }
+    })
+  }
+}
+
+const bitfinexMapper: SubscriptionMapper = {
+  canHandle: () => true,
+  map: () => []
+}
+
+export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
   deribit: deribitMapper,
@@ -219,10 +294,21 @@ export const subscriptionsMappers: { [key in Exchange]?: SubscriptionMapper } = 
   ftx: ftxMapper,
   kraken: krakenMapper,
   bitflyer: bitflyerMapper,
-  gemini: geminiMapper
+  gemini: geminiMapper,
+  binance: binanceMapper,
+  'binance-futures': binanceMapper,
+  'binance-jersey': binanceMapper,
+  'binance-us': binanceMapper,
+  'binance-dex': binanceDEXMapper,
+  huobi: huobiMapper,
+  'huobi-dm': huobiMapper,
+  'huobi-us': huobiMapper,
+  bybit: bybitMapper,
+  bitfinex: bitfinexMapper,
+  'bitfinex-derivatives': bitfinexMapper
 }
 
 export type SubscriptionMapper = {
   canHandle: (message: object) => boolean
-  map: (message: object) => Filter<any>[]
+  map: (message: object) => Filter<string>[]
 }
