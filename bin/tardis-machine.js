@@ -4,8 +4,6 @@ const yargs = require('yargs')
 const os = require('os')
 const path = require('path')
 
-const { TardisMachine } = require('../dist')
-
 const DEFAULT_PORT = 8000
 const argv = yargs
   .scriptName('tardis-machine')
@@ -32,6 +30,18 @@ const argv = yargs
     default: DEFAULT_PORT
   })
 
+  .option('port', {
+    type: 'number',
+    describe: 'Port to bind server on',
+    default: DEFAULT_PORT
+  })
+
+  .option('debug', {
+    type: 'boolean',
+    describe: 'Enable debug logs.',
+    default: false
+  })
+
   .help()
   .version()
   .usage('$0 [options]')
@@ -41,6 +51,13 @@ const argv = yargs
 
 // if port ENV is defined use it otherwise use provided options
 const portToListenTo = process.env.PORT ? +process.env.PORT : argv['port']
+const enableDebug = argv['debug']
+
+if (enableDebug) {
+  process.env.DEBUG = 'tardis-dev:machine*'
+}
+
+const { TardisMachine } = require('../dist')
 
 new TardisMachine({
   apiKey: argv['api-key'],

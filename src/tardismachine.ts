@@ -7,6 +7,8 @@ import WebSocket from 'ws'
 import { bitmexWsHelp, replayHttp, replayNormalizedHttp } from './http'
 import { replayNormalizedWS, replayWS, streamNormalizedWS } from './ws'
 
+const pkg = require('../package.json')
+
 export class TardisMachine {
   private readonly _httpServer: http.Server
 
@@ -73,9 +75,9 @@ export class TardisMachine {
     })
 
     if (isDocker() && !process.env.RUNKIT_HOST) {
-      console.log(`tardis-machine is running inside Docker container...`)
+      console.log(`tardis-machine v${pkg.version} is running inside Docker container...`)
     } else {
-      console.log(`tardis-machine is running on ${port} port...`)
+      console.log(`tardis-machine v${pkg.version} is running on ${port} port...`)
     }
 
     console.log(`See https://docs.tardis.dev/api/tardis-machine for more information.`)
