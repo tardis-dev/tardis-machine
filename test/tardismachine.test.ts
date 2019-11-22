@@ -1,17 +1,24 @@
 import fetch from 'node-fetch'
 import split2 from 'split2'
 import WebSocket from 'ws'
-import { FilterForExchange } from 'tardis-client'
+import { FilterForExchange, EXCHANGES, getExchangeDetails } from 'tardis-dev'
 import { TardisMachine } from '../src'
+import { wait } from '../src/helpers'
 
 const BitMEXClient = require('bitmex-realtime-api')
 
 const PORT = 8072
 const HTTP_REPLAY_DATA_FEEDS_URL = `http://localhost:${PORT}/replay`
+const HTTP_REPLAY_NORMALIZED_URL = `http://localhost:${PORT}/replay-normalized`
+const WS_REPLAY_NORMALIZED_URL = `ws://localhost:${PORT}/ws-replay-normalized`
 const WS_REPLAY_URL = `ws://localhost:${PORT}/ws-replay`
 
+const serializeOptions = (options: any) => {
+  return encodeURIComponent(JSON.stringify(options))
+}
 describe('tardis-machine', () => {
   let tardisMachine: TardisMachine
+
   beforeAll(async () => {
     tardisMachine = new TardisMachine({ cacheDir: './.cache' })
     await tardisMachine.run(PORT) // start server
@@ -21,12 +28,122 @@ describe('tardis-machine', () => {
     await tardisMachine.stop()
   })
 
+  describe('HTTP GET /replay-normalized', () => {
+    test(
+      'replays Bitmex ETHUSD trades and order book changes',
+      async () => {
+        const options = {
+          exchange: 'bitmex',
+          symbols: ['ETHUSD'],
+          from: '2019-06-01',
+          to: '2019-06-01 00:01',
+          dataTypes: ['trade', 'book_change']
+        }
+
+        const response = await fetch(`${HTTP_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`)
+
+        expect(response.status).toBe(200)
+
+        const messagesStream = response.body.pipe(split2()) // split response body by new lines
+
+        const messages = []
+        for await (let line of messagesStream) {
+          const message = JSON.parse(line)
+
+          messages.push(JSON.stringify(message))
+        }
+
+        expect(messages).toMatchSnapshot()
+      },
+      1000 * 60 * 10
+    ),
+      test(
+        'replays Bitmex ETHUSD order book real time quotes and 6 second 5 levels snapshots',
+        async () => {
+          const options = {
+            exchange: 'bitmex',
+            symbols: ['ETHUSD'],
+            from: '2019-06-01',
+            to: '2019-06-01 00:01',
+            dataTypes: ['quote', 'book_snapshot_5_6s']
+          }
+
+          const response = await fetch(`${HTTP_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`)
+
+          expect(response.status).toBe(200)
+
+          const messagesStream = response.body.pipe(split2()) // split response body by new lines
+
+          const messages = []
+          for await (let line of messagesStream) {
+            const message = JSON.parse(line)
+
+            messages.push(JSON.stringify(message))
+          }
+
+          expect(messages).toMatchSnapshot()
+        },
+        1000 * 60 * 10
+      )
+
+    test(
+      'replays Bitmex XBTUSD and Deribit BTC-PERPETUAL trade 1 second bars',
+      async () => {
+        const options = [
+          {
+            exchange: 'bitmex',
+            symbols: ['ETHUSD'],
+            from: '2019-06-01',
+            to: '2019-06-01 00:01',
+            dataTypes: ['trade_bar_1s']
+          },
+          {
+            exchange: 'deribit',
+            symbols: ['BTC-PERPETUAL'],
+            from: '2019-06-01',
+            to: '2019-06-01 00:01',
+            dataTypes: ['trade_bar_1s']
+          }
+        ]
+
+        const response = await fetch(`${HTTP_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`)
+
+        expect(response.status).toBe(200)
+
+        const messagesStream = response.body.pipe(split2()) // split response body by new lines
+
+        const messages = []
+        for await (let line of messagesStream) {
+          const message = JSON.parse(line)
+
+          messages.push(JSON.stringify(message))
+        }
+
+        expect(messages).toMatchSnapshot()
+      },
+      1000 * 60 * 10
+    )
+  })
+
   describe('HTTP GET /replay', () => {
     test('invalid params', async () => {
-      let response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?exchange=binance&from=sdf&to=dsd`)
+      let response = await fetch(
+        `${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions({
+          exchange: 'binance',
+          from: 'sdf',
+          to: 'ssd'
+        })}`
+      )
       expect(response.status).toBe(500)
 
-      response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?exchange=binance&from=2019-06-05 00:00Z&to=2019-05-05 00:05Z`)
+      response = await fetch(
+        `${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions({
+          exchange: 'binance',
+          from: '2019-06-05 00:00Z',
+          to: '2019-05-05 00:05Z'
+        })}`
+      )
+
       expect(response.status).toBe(500)
     })
 
@@ -44,11 +161,14 @@ describe('tardis-machine', () => {
           }
         ]
 
-        let response = await fetch(
-          `${HTTP_REPLAY_DATA_FEEDS_URL}?exchange=bitmex&from=2019-05-01&to=2019-05-02&filters=${encodeURIComponent(
-            JSON.stringify(filters)
-          )}`
-        )
+        const options = {
+          exchange: 'bitmex',
+          from: '2019-05-01',
+          to: '2019-05-02',
+          filters
+        }
+
+        const response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions(options)}`)
 
         expect(response.status).toBe(200)
 
@@ -58,7 +178,7 @@ describe('tardis-machine', () => {
         let receivedOrderBookUpdatesCount = 0
 
         for await (let line of ethTradeMessages) {
-          const { message, localTimestamp } = JSON.parse(line)
+          const { message } = JSON.parse(line)
 
           if (message.table == 'trade') {
             receivedTradesCount++
@@ -76,7 +196,13 @@ describe('tardis-machine', () => {
     )
 
     test('unauthorizedAccess', async () => {
-      let response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?exchange=bitmex&from=2019-05-02&to=2019-05-03`)
+      const options = {
+        exchange: 'bitmex',
+        from: '2019-05-02',
+        to: '2019-05-03'
+      }
+
+      const response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions(options)}`)
 
       expect(response.status).toBe(401)
     })
@@ -98,7 +224,7 @@ describe('tardis-machine', () => {
           type: 'subscribe',
           channels: [
             {
-              name: 'match',
+              name: 'matches',
               product_ids: ['ZEC-USDC']
             }
           ]
@@ -367,6 +493,174 @@ describe('tardis-machine', () => {
       },
       20 * 60 * 1000
     )
+
+    test(
+      'subcribes to and replays historical Binance data feed of 1st of July 2019 5 minutes (btcusdt trades)',
+      async () => {
+        let messages: string[] = []
+        const simpleBinanceClient = new SimpleWebsocketClient(
+          `${WS_REPLAY_URL}?exchange=binance&from=2019-07-01&to=2019-07-01 00:05`,
+          message => {
+            messages.push(message as string)
+          }
+        )
+
+        await simpleBinanceClient.send({ method: 'SUBSCRIBE', params: ['btcusdt@trade'] })
+
+        await simpleBinanceClient.closed()
+        expect(messages).toMatchSnapshot()
+      },
+      10 * 60 * 1000
+    )
+  })
+
+  describe('WS /ws-replay-normalized', () => {
+    test(
+      'replays Bitmex ETHUSD trades and order book changes',
+      async () => {
+        const options = {
+          exchange: 'bitmex',
+          symbols: ['ETHUSD'],
+          from: '2019-06-01',
+          to: '2019-06-01 00:01',
+          dataTypes: ['trade', 'book_change']
+        }
+
+        let messages: string[] = []
+
+        const simpleWSClient = new SimpleWebsocketClient(`${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`, message => {
+          messages.push(message)
+        })
+
+        await simpleWSClient.closed()
+
+        expect(messages).toMatchSnapshot()
+      },
+      1000 * 60 * 10
+    ),
+      test(
+        'replays Bitmex ETHUSD order book real time quotes and 6 second 5 levels snapshots',
+        async () => {
+          const options = {
+            exchange: 'bitmex',
+            symbols: ['ETHUSD'],
+            from: '2019-06-01',
+            to: '2019-06-01 00:01',
+            dataTypes: ['quote', 'book_snapshot_5_6s']
+          }
+
+          let messages: string[] = []
+
+          const simpleWSClient = new SimpleWebsocketClient(`${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`, message => {
+            messages.push(message)
+          })
+
+          await simpleWSClient.closed()
+
+          expect(messages).toMatchSnapshot()
+        },
+        1000 * 60 * 10
+      )
+
+    test(
+      'replays Bitmex XBTUSD and Deribit BTC-PERPETUAL trade 1 second bars',
+      async () => {
+        const options = [
+          {
+            exchange: 'bitmex',
+            symbols: ['ETHUSD'],
+            from: '2019-06-01',
+            to: '2019-06-01 00:01',
+            dataTypes: ['trade_bar_1s']
+          },
+          {
+            exchange: 'deribit',
+            symbols: ['BTC-PERPETUAL'],
+            from: '2019-06-01',
+            to: '2019-06-01 00:01',
+            dataTypes: ['trade_bar_1s']
+          }
+        ]
+
+        let messages: string[] = []
+
+        const simpleWSClient = new SimpleWebsocketClient(`${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`, message => {
+          messages.push(message)
+        })
+
+        await simpleWSClient.closed()
+
+        expect(messages).toMatchSnapshot()
+      },
+      1000 * 60 * 10
+    )
+  })
+
+  describe('WS /ws-stream-normalized', () => {
+    test(
+      'streams normalized real-time messages for each supported exchange as single consolidated stream',
+      async () => {
+        const exchangesWithDerivativeInfo = [
+          'bitmex',
+          'binance-futures',
+          'bitfinex-derivatives',
+          'cryptofacilities',
+          'deribit',
+          'okex',
+          'bybit'
+        ]
+
+        const options = await Promise.all(
+          EXCHANGES.map(async exchange => {
+            const exchangeDetails = await getExchangeDetails(exchange)
+
+            const dataTypes: any[] = ['trade', 'trade_bar_10ms']
+            // bitstamp issue under node 12 (invalid headers)
+            // let's skip book snapshots for it
+            if (exchange !== 'bitstamp') {
+              dataTypes.push('book_change')
+              dataTypes.push('book_snapshot_3_0ms')
+            }
+
+            if (exchangesWithDerivativeInfo.includes(exchange)) {
+              dataTypes.push('derivative_ticker')
+            }
+
+            var symbols = exchangeDetails.availableSymbols
+              .filter(s => s.availableTo === undefined || new Date(s.availableTo).valueOf() > new Date().valueOf())
+              .filter(s => s.type !== 'option')
+              .slice(0, 5)
+              .map(s => s.id)
+
+            return {
+              exchange,
+              symbols,
+              withDisconnectMessages: true,
+              timeoutIntervalMS: 30 * 1000,
+              dataTypes: dataTypes
+            }
+          })
+        )
+
+        var ws = new WebSocket(`ws://localhost:${PORT}/ws-stream-normalized?options=${serializeOptions(options)}`)
+
+        const realtimeMessagesStream = (WebSocket as any).createWebSocketStream(ws, {
+          readableObjectMode: true
+        }) as AsyncIterableIterator<Buffer>
+
+        let count = 0
+
+        for await (const msgBuffer of realtimeMessagesStream) {
+          JSON.parse(msgBuffer as any)
+          count++
+
+          if (count > 100000) {
+            break
+          }
+        }
+      },
+      1000 * 60 * 4
+    )
   })
 })
 
@@ -391,6 +685,7 @@ class SimpleWebsocketClient {
   }
 
   public async closed() {
+    await wait(1000)
     if (this._socket.readyState != WebSocket.OPEN) {
       return
     }

@@ -167,12 +167,12 @@ class WebsocketConnection {
 
   public close(error: Error | undefined = undefined) {
     if (error) {
+      debug('Closed websocket connection %s, error: %o', this, error)
       this.ws.close(1011, error.toString())
     } else {
+      debug('Closed websocket connection %s', this)
       this.ws.close(1000, 'WS replay finished')
     }
-
-    debug('Closed websocket connection %s, %o', this, error)
   }
 
   public toString() {

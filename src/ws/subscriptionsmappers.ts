@@ -279,6 +279,27 @@ const bybitMapper: SubscriptionMapper = {
   }
 }
 
+// https://api.hitbtc.com/#subscribe-to-trades
+const hitBtcMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.method !== undefined
+  },
+
+  map: (message: any) => {
+    const channelMappings = {
+      subscribeTrades: ['snapshotTrades', 'updateTrades'],
+      subscribeOrderbook: ['snapshotOrderbook', 'updateOrderbook']
+    } as any
+
+    return channelMappings[message.method].map((channel: string) => {
+      return {
+        channel,
+        symbols: [message.params.symbol]
+      }
+    })
+  }
+}
+
 const bitfinexMapper: SubscriptionMapper = {
   canHandle: () => true,
   map: () => []
@@ -305,7 +326,9 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   'huobi-us': huobiMapper,
   bybit: bybitMapper,
   bitfinex: bitfinexMapper,
-  'bitfinex-derivatives': bitfinexMapper
+  'bitfinex-derivatives': bitfinexMapper,
+  okcoin: okexMapper,
+  hitbtc: hitBtcMapper
 }
 
 export type SubscriptionMapper = {

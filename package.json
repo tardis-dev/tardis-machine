@@ -13,7 +13,7 @@
   "scripts": {
     "build": "tsc",
     "precommit": "lint-staged",
-    "test": "jest",
+    "test": "jest --runInBand --forceExit",
     "prepare": "npm run build",
     "release": "cross-var \"npm run test && npm run build && git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish --access=public\""
   },
@@ -45,7 +45,7 @@
     "debug": "^4.1.1",
     "find-my-way": "^2.2.1",
     "is-docker": "^2.0.0",
-    "tardis-dev": "^7.7.3",
+    "tardis-dev": "^7.7.5",
     "ws": "^7.2.0",
     "yargs": "^14.2.0"
   },

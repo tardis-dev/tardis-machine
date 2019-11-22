@@ -37,9 +37,9 @@ export class TardisMachine {
 
     // super simple routing for websocket routes
     const routes = {
-      '/ws/replay': replayWS,
-      '/ws/replay-normalized': replayNormalizedWS,
-      '/ws/stream-normalized': streamNormalizedWS
+      '/ws-replay': replayWS,
+      '/ws-replay-normalized': replayNormalizedWS,
+      '/ws-stream-normalized': streamNormalizedWS
     } as any
 
     websocketServer.on('connection', async (ws, request) => {
