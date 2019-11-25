@@ -45,7 +45,7 @@
     "debug": "^4.1.1",
     "find-my-way": "^2.2.1",
     "is-docker": "^2.0.0",
-    "tardis-dev": "^7.7.5",
+    "tardis-dev": "^7.7.7",
     "ws": "^7.2.0",
     "yargs": "^14.2.0"
   },
