@@ -16,6 +16,7 @@ import {
 const pipeline = promisify(stream.pipeline)
 
 export async function replayNormalizedWS(ws: WebSocket, req: IncomingMessage) {
+  let messages: AsyncIterableIterator<any> | undefined
   try {
     const startTimestamp = new Date().getTime()
     const parsedQuery = url.parse(req.url!, true).query
@@ -40,7 +41,7 @@ export async function replayNormalizedWS(ws: WebSocket, req: IncomingMessage) {
     })
 
     const filterByDataType = constructDataTypeFilter(options)
-    const messages = messagesIterables.length === 1 ? messagesIterables[0] : combine(...messagesIterables)
+    messages = messagesIterables.length === 1 ? messagesIterables[0] : combine(...messagesIterables)
 
     // pipe replayed messages through transform stream that filters those if needed and stringifies and then finally trough WebSocket stream
     const webSocketStream = (WebSocket as any).createWebSocketStream(ws, { decodeStrings: false })
@@ -55,6 +56,11 @@ export async function replayNormalizedWS(ws: WebSocket, req: IncomingMessage) {
       (endTimestamp - startTimestamp) / 1000
     )
   } catch (e) {
+    // this will underlying open WS connections
+    if (messages !== undefined) {
+      messages!.return!()
+    }
+
     ws.close(1011, e.toString())
     debug('WebSocket /ws-replay-normalized  error: %o', e)
     console.error('WebSocket /ws-replay-normalized error:', e)
