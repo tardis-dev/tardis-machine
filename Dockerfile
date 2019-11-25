@@ -1,5 +1,5 @@
-# node v12 is required
-from node:12-slim
+# node v13 is required
+from node:13-slim
 # version arg contains current git tag
 ARG VERSION_ARG
 # install tardis-machine globally (exposes tardis-machine command)
