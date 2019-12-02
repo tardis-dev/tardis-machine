@@ -15,7 +15,8 @@ export class TardisMachine {
   constructor(private readonly options: Options) {
     init({
       apiKey: options.apiKey,
-      cacheDir: options.cacheDir
+      cacheDir: options.cacheDir,
+      _userAgent: `tardis-machine/${pkg.version} (+https://github.com/tardis-dev/tardis-machine)`
     })
 
     const router = findMyWay({ ignoreTrailingSlash: true })
