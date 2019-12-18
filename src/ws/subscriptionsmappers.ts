@@ -312,6 +312,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   cryptofacilities: cryptofacilitiesMapper,
   bitstamp: bitstampMapper,
   okex: okexMapper,
+  'okex-futures': okexMapper,
+  'okex-swap': okexMapper,
   ftx: ftxMapper,
   kraken: krakenMapper,
   bitflyer: bitflyerMapper,

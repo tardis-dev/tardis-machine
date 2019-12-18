@@ -284,14 +284,17 @@ describe('tardis-machine', () => {
     )
 
     test(
-      'subcribes to and replays historical OKEX data feed of 1st of Jun 2019 (LTC-USD-SWAP trades)',
+      'subcribes to and replays historical OKEX data feed of 1st of Jun 2019 (BTC-USDT trades)',
       async () => {
         let messages: string[] = []
-        const simpleOkexClient = new SimpleWebsocketClient(`${WS_REPLAY_URL}?exchange=okex&from=2019-06-01&to=2019-06-02`, message => {
-          messages.push(message as string)
-        })
+        const simpleOkexClient = new SimpleWebsocketClient(
+          `${WS_REPLAY_URL}?exchange=okex&from=2019-06-01&to=2019-06-01 02:00`,
+          message => {
+            messages.push(message as string)
+          }
+        )
 
-        await simpleOkexClient.send({ op: 'subscribe', args: ['swap/trade:LTC-USD-SWAP'] })
+        await simpleOkexClient.send({ op: 'subscribe', args: ['spot/trade:BTC-USDT'] })
 
         await simpleOkexClient.closed()
         expect(messages).toMatchSnapshot()
@@ -606,7 +609,8 @@ describe('tardis-machine', () => {
           'bitfinex-derivatives',
           'cryptofacilities',
           'deribit',
-          'okex',
+          'okex-futures',
+          'okex-swap',
           'bybit'
         ]
 
