@@ -615,16 +615,9 @@ describe('tardis-machine', () => {
         ]
 
         const options = await Promise.all(
-          EXCHANGES.map(async exchange => {
+          EXCHANGES.filter(e => e !== 'binance-dex').map(async exchange => {
             const exchangeDetails = await getExchangeDetails(exchange)
-
-            const dataTypes: any[] = ['trade', 'trade_bar_10ms']
-            // bitstamp issue under node 12 (invalid headers)
-            // let's skip book snapshots for it
-            if (exchange !== 'bitstamp') {
-              dataTypes.push('book_change')
-              dataTypes.push('book_snapshot_3_0ms')
-            }
+            const dataTypes: any[] = ['trade', 'trade_bar_10ms', 'book_change', 'book_snapshot_3_0ms']
 
             if (exchangesWithDerivativeInfo.includes(exchange)) {
               dataTypes.push('derivative_ticker')
@@ -633,7 +626,7 @@ describe('tardis-machine', () => {
             var symbols = exchangeDetails.availableSymbols
               .filter(s => s.availableTo === undefined || new Date(s.availableTo).valueOf() > new Date().valueOf())
               .filter(s => s.type !== 'option')
-              .slice(0, 5)
+              .slice(0, 10)
               .map(s => s.id)
 
             return {
@@ -658,7 +651,7 @@ describe('tardis-machine', () => {
           JSON.parse(msgBuffer as any)
           count++
 
-          if (count > 100000) {
+          if (count > 200) {
             break
           }
         }

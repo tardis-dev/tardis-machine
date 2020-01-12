@@ -1,6 +1,6 @@
 {
   "name": "tardis-machine",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "engines": {
     "node": ">=12"
   },
@@ -15,7 +15,7 @@
     "precommit": "lint-staged",
     "test": "jest --runInBand --forceExit",
     "prepare": "npm run build",
-    "release": "cross-var \"npm run test && npm run build && git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish --access=public\""
+    "release": "cross-var \"npm run build && git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish --access=public\""
   },
   "bin": {
     "tardis-machine": "./bin/tardis-machine.js"
