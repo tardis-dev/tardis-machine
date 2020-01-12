@@ -5,6 +5,9 @@
 [![Version](https://img.shields.io/npm/v/tardis-machine.svg)](https://www.npmjs.org/package/tardis-machine)
 [![Try on RunKit](https://badge.runkitcdn.com/tardis-machine.svg)](https://runkit.com/npm/tardis-machine)
 
+
+# THIS IS DOCUMENTATION FOR V1 of tardis-machine, see https://docs.tardis.dev/api/tardis-machine for v2 docs.
+
 Check out [`tardis-client`](https://github.com/tardis-dev/node-client) as well if you're using Node.js.
 
 ## HTTP endpoint
@@ -156,7 +159,7 @@ In contrast to HTTP API for WebSocket API filters aren't provided explicitly as 
 - ### Docker
 
   ```sh
-  docker run -v ./host-cache-dir:/.cache -p 8000:8000 -e "TM_API-KEY=YOUR_API_KEY" -d tardisdev/tardis-machine
+  docker run -v ./host-cache-dir:/.cache -p 8000:8000 -e "TM_API_KEY=YOUR_API_KEY" -d tardisdev/tardis-machine
   ```
 
   Command above will pull and run latest version of [`tardisdev/tardis-machine` image](https://hub.docker.com/r/tardisdev/tardis-machine). Local proxy will be available on host via `8000` port (eg `http://localhost:8000/replay/...`).
@@ -166,7 +169,7 @@ In contrast to HTTP API for WebSocket API filters aren't provided explicitly as 
   In order to debug issues/see detailed logs one can run:
 
   ```sh
-  docker run -v ./host-cache-dir:/.cache -p 8000:8000 -e "TM_API-KEY=YOUR_API_KEY" -e="DEBUG=tardis*" -d tardisdev/tardis-machine
+  docker run -v ./host-cache-dir:/.cache -p 8000:8000 -e "TM_API_KEY=YOUR_API_KEY" -e="DEBUG=tardis*" -d tardisdev/tardis-machine
   ```
 
   Setting `DEBUG=tardis*` wil cause to print various useful debug logs to stdout.
@@ -175,7 +178,7 @@ In contrast to HTTP API for WebSocket API filters aren't provided explicitly as 
 
   ```sh
   ### running without persitent local cache
-  docker run -p 8000:8000 -e "TM_API-KEY=YOUR_API_KEY" -d tardisdev/tardis-machine
+  docker run -p 8000:8000 -e "TM_API_KEY=YOUR_API_KEY" -d tardisdev/tardis-machine
   ```
 
   [`tardisdev/tardis-machine` docker image](https://hub.docker.com/r/tardisdev/tardis-machine) can be used in K8S setup as well (just set up proper env variables and persisten volumes in analogue way).
