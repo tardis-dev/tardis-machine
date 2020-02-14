@@ -615,7 +615,7 @@ describe('tardis-machine', () => {
         ]
 
         const options = await Promise.all(
-          EXCHANGES.filter(e => e !== 'binance-dex').map(async exchange => {
+          EXCHANGES.filter(e => e !== 'binance-dex' && e !== 'coinflex').map(async exchange => {
             const exchangeDetails = await getExchangeDetails(exchange)
             const dataTypes: any[] = ['trade', 'trade_bar_10ms', 'book_change', 'book_snapshot_3_0ms']
 
@@ -625,8 +625,7 @@ describe('tardis-machine', () => {
 
             var symbols = exchangeDetails.availableSymbols
               .filter(s => s.availableTo === undefined || new Date(s.availableTo).valueOf() > new Date().valueOf())
-              .filter(s => s.type !== 'option')
-              .slice(0, 10)
+              .slice(0, 2)
               .map(s => s.id)
 
             return {

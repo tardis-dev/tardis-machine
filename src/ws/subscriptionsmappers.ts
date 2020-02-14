@@ -305,6 +305,26 @@ const bitfinexMapper: SubscriptionMapper = {
   map: () => []
 }
 
+const coinflexMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.method === 'WatchOrders' || message.method === 'WatchTicker'
+  },
+
+  map: (message: any) => {
+    const channelMappings = {
+      WatchOrders: ['OrderOpened', 'OrderModified', 'OrdersMatched', 'OrderClosed'],
+      WatchTicker: ['TickerChanged']
+    } as any
+
+    return channelMappings[message.method].map((channel: string) => {
+      return {
+        channel,
+        symbols: [`${message.base}${message.counter}`]
+      }
+    })
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -314,6 +334,7 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   okex: okexMapper,
   'okex-futures': okexMapper,
   'okex-swap': okexMapper,
+  'okex-options': okexMapper,
   ftx: ftxMapper,
   kraken: krakenMapper,
   bitflyer: bitflyerMapper,
@@ -325,12 +346,13 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   'binance-dex': binanceDEXMapper,
   huobi: huobiMapper,
   'huobi-dm': huobiMapper,
-  'huobi-us': huobiMapper,
   bybit: bybitMapper,
   bitfinex: bitfinexMapper,
+  'bitfinex-alts': bitfinexMapper,
   'bitfinex-derivatives': bitfinexMapper,
   okcoin: okexMapper,
-  hitbtc: hitBtcMapper
+  hitbtc: hitBtcMapper,
+  coinflex: coinflexMapper
 }
 
 export type SubscriptionMapper = {
