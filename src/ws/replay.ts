@@ -7,16 +7,20 @@ import { wait } from '../helpers'
 import { SubscriptionMapper, subscriptionsMappers } from './subscriptionsmappers'
 
 const replaySessions: { [sessionKey: string]: ReplaySession | undefined } = {}
+let sessionsCounter = 0
 
 export function replayWS(ws: WebSocket, req: IncomingMessage) {
   const parsedQuery = url.parse(req.url!, true).query
   const from = parsedQuery['from'] as string
   const to = parsedQuery['to'] as string
-  const replaySessionKey = `${from}-${to}`
-  // if there are multiple separate ws connections being made for the same date ranges
+  const exchange = parsedQuery['exchange'] as Exchange
+
+  // if there are multiple separate ws connections being made for the same session key
   // in short time frame (5 seconds)
   // consolidate them in single replay session that will make sure that messages being send via multiple websockets connections
   // are  synchronized by local timestamp
+
+  const replaySessionKey = (parsedQuery['session'] as string) || exchange + sessionsCounter++
 
   let matchingReplaySessionMeta = replaySessions[replaySessionKey] && replaySessions[replaySessionKey]
 
@@ -38,7 +42,7 @@ export function replayWS(ws: WebSocket, req: IncomingMessage) {
     return
   }
 
-  matchingReplaySessionMeta.addToSession(new WebsocketConnection(ws, parsedQuery['exchange'] as Exchange, from, to))
+  matchingReplaySessionMeta.addToSession(new WebsocketConnection(ws, exchange, from, to))
 }
 
 class ReplaySession {
