@@ -90,35 +90,59 @@ class ReplaySession {
       throw new Error(`No subscriptions received for websocket connection ${connectionsWithoutSubscriptions[0]}`)
     }
 
-    // map connection to replay messages streams enhanced with addtional ws field so
-    // when we combine streams by localTimestamp we'll know which ws we should send given message via
-    const messagesWithConnections = this._connections.map(async function*(connection) {
+    // fast path for case when there is only single WS connection for given replay session
+    if (this._connections.length === 1) {
+      const connection = this._connections[0]
+
       const messages = replay({
         ...connection.replayOptions,
         skipDecoding: true,
         withDisconnects: false
       })
 
-      for await (const { localTimestamp, message } of messages) {
-        yield {
-          ws: connection.ws,
-          localTimestamp: new Date(localTimestamp.toString()),
-          message
+      for await (const { message } of messages) {
+        // wait until  buffer is empty
+        // sometimes slow clients can't keep up with messages arrival rate so we need to throttle
+        // https://nodejs.org/api/net.html#net_socket_buffersize
+        while (connection.ws.bufferedAmount > 0) {
+          await wait(1)
         }
-      }
-    })
 
-    for await (const { ws, message } of combine(...messagesWithConnections)) {
-      // wait until  buffer is empty
-      // sometimes slow clients can't keep up with messages arrival rate so we need to throttle
-      // https://nodejs.org/api/net.html#net_socket_buffersize
-      while (ws.bufferedAmount > 0) {
-        await wait(1)
+        connection.ws.send(message, {
+          binary: false
+        })
       }
+    } else {
+      // map connections to replay messages streams enhanced with addtional ws field so
+      // when we combine streams by localTimestamp we'll know which ws we should send given message via
+      const messagesWithConnections = this._connections.map(async function*(connection) {
+        const messages = replay({
+          ...connection.replayOptions,
+          skipDecoding: true,
+          withDisconnects: false
+        })
 
-      ws.send(message, {
-        binary: false
+        for await (const { localTimestamp, message } of messages) {
+          yield {
+            ws: connection.ws,
+            localTimestamp: new Date(localTimestamp.toString()),
+            message
+          }
+        }
       })
+
+      for await (const { ws, message } of combine(...messagesWithConnections)) {
+        // wait until  buffer is empty
+        // sometimes slow clients can't keep up with messages arrival rate so we need to throttle
+        // https://nodejs.org/api/net.html#net_socket_buffersize
+        while (ws.bufferedAmount > 0) {
+          await wait(1)
+        }
+
+        ws.send(message, {
+          binary: false
+        })
+      }
     }
 
     await this._closeAllConnections()
