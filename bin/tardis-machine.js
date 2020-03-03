@@ -3,6 +3,10 @@
 const yargs = require('yargs')
 const os = require('os')
 const path = require('path')
+const cluster = require('cluster')
+const numCPUs = require('os').cpus().length
+const isDocker = require('is-docker')
+const pkg = require('../package.json')
 
 const DEFAULT_PORT = 8000
 const argv = yargs
@@ -35,6 +39,11 @@ const argv = yargs
     describe: 'Port to bind server on',
     default: DEFAULT_PORT
   })
+  .option('cluster-mode', {
+    type: 'boolean',
+    describe: 'Run tardis-machine as cluster of Node.js processes',
+    default: false
+  })
 
   .option('debug', {
     type: 'boolean',
@@ -50,7 +59,7 @@ const argv = yargs
   .detectLocale(false).argv
 
 // if port ENV is defined use it otherwise use provided options
-const portToListenTo = process.env.PORT ? +process.env.PORT : argv['port']
+const port = process.env.PORT ? +process.env.PORT : argv['port']
 const enableDebug = argv['debug']
 
 if (enableDebug) {
@@ -59,8 +68,39 @@ if (enableDebug) {
 
 const { TardisMachine } = require('../dist')
 
-new TardisMachine({
-  apiKey: argv['api-key'],
-  cacheDir: argv['cache-dir'],
-  clearCache: argv['clear-cache']
-}).run(portToListenTo)
+async function start() {
+  const machine = new TardisMachine({
+    apiKey: argv['api-key'],
+    cacheDir: argv['cache-dir'],
+    clearCache: argv['clear-cache']
+  })
+  let suffix = ''
+
+  const runAsCluster = argv['cluster-mode']
+  if (runAsCluster) {
+    suffix = '(cluster mode)'
+    if (cluster.isMaster) {
+      for (let i = 0; i < numCPUs; i++) {
+        cluster.fork()
+      }
+    } else {
+      await machine.start(port)
+    }
+  } else {
+    await machine.start(port)
+  }
+
+  if (!cluster.isMaster) {
+    return
+  }
+
+  if (isDocker() && !process.env.RUNKIT_HOST) {
+    console.log(`tardis-machine server v${pkg.version} is running inside Docker container ${suffix}`)
+  } else {
+    console.log(`tardis-machine server v${pkg.version} is running on ${port} port ${suffix}`)
+  }
+
+  console.log(`See https://docs.tardis.dev/api/tardis-machine for more information.`)
+}
+
+start()
