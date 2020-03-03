@@ -65,13 +65,11 @@ async function writeMessagesToResponse(res: OutgoingMessage, replayOptions: Repl
       // let's batch them and send in BATCH_SIZE  batches (each message is 5 buffers: prefix etc)
       // also instead of converting messages to string or parsing them let's manually stich together desired json response using buffers which is faster
       buffers.push(
-        ...[
-          responsePrefixBuffer,
-          messageWithTimestamp.localTimestamp,
-          responseMiddleBuffer,
-          messageWithTimestamp.message,
-          responseSuffixBuffer
-        ]
+        responsePrefixBuffer,
+        messageWithTimestamp.localTimestamp,
+        responseMiddleBuffer,
+        messageWithTimestamp.message,
+        responseSuffixBuffer
       )
 
       if (buffers.length == BATCH_SIZE * 5) {
