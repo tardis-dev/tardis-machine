@@ -194,9 +194,9 @@ async function runBenchmarks() {
   console.log('\n')
 
   await httpReplayBenchmark({ JSONParseResponse: false })
-  await wsReplayBenchmark({ JSONParseResponse: false })
 
   await httpReplayBenchmark({ JSONParseResponse: true })
+
   await wsReplayBenchmark({ JSONParseResponse: true })
 
   await httpReplayNormalizedBenchmark({ computeTBTBookSnapshots: false })
