@@ -1,6 +1,5 @@
 import findMyWay from 'find-my-way'
 import http from 'http'
-import isDocker from 'is-docker'
 import { clearCache, init } from 'tardis-dev'
 import url from 'url'
 import WebSocket from 'ws'
@@ -61,7 +60,7 @@ export class TardisMachine {
     })
   }
 
-  public async run(port: number) {
+  public async start(port: number) {
     if (this.options.clearCache) {
       await clearCache()
     }
@@ -74,14 +73,6 @@ export class TardisMachine {
         reject(e)
       }
     })
-
-    if (isDocker() && !process.env.RUNKIT_HOST) {
-      console.log(`tardis-machine v${pkg.version} is running inside Docker container...`)
-    } else {
-      console.log(`tardis-machine v${pkg.version} is running on ${port} port...`)
-    }
-
-    console.log(`See https://docs.tardis.dev/api/tardis-machine for more information.`)
   }
 
   public async stop() {
