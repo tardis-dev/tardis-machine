@@ -49,7 +49,7 @@ class ReplaySession {
   private _hasStarted: boolean = false
 
   constructor() {
-    const SESSION_START_DELAY_MS = 5000
+    const SESSION_START_DELAY_MS = 2000
 
     debug('creating new ReplaySession')
 
