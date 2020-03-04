@@ -78,6 +78,8 @@ async function start() {
 
   const runAsCluster = argv['cluster-mode']
   if (runAsCluster) {
+    cluster.schedulingPolicy = cluster.SCHED_RR
+
     suffix = '(cluster mode)'
     if (cluster.isMaster) {
       for (let i = 0; i < numCPUs; i++) {
@@ -97,7 +99,9 @@ async function start() {
   if (isDocker() && !process.env.RUNKIT_HOST) {
     console.log(`tardis-machine server v${pkg.version} is running inside Docker container ${suffix}`)
   } else {
-    console.log(`tardis-machine server v${pkg.version} is running on ${port} port ${suffix}`)
+    console.log(`tardis-machine server v${pkg.version} is running ${suffix}`)
+    console.log(`HTTP port: ${port}`)
+    console.log(`WS port: ${port + 1}`)
   }
 
   console.log(`See https://docs.tardis.dev/api/tardis-machine for more information.`)
