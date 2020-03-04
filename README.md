@@ -3,7 +3,6 @@
 `tardis-machine` is a fast locally installable server with built-in local caching, that uses [tardis.dev HTTP API](https://app.gitbook.com/@tardisdev/s/workspace/api#http-api) under the hood. It provides streaming HTTP and WebSocket endpoints that offer on-demand tick-level crypto market data replay from any moment in time in exchange's Websocket data format.
 
 [![Version](https://img.shields.io/npm/v/tardis-machine.svg)](https://www.npmjs.org/package/tardis-machine)
-[![Try on RunKit](https://badge.runkitcdn.com/tardis-machine.svg)](https://runkit.com/npm/tardis-machine)
 
 # THIS IS DOCUMENTATION FOR v1 of tardis-machine, see https://docs.tardis.dev/api/tardis-machine for v3 docs.
 
