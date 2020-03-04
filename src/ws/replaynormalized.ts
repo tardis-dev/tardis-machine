@@ -1,25 +1,14 @@
-import { IncomingMessage } from 'http'
-import stream from 'stream'
 import { combine, compute, replayNormalized } from 'tardis-dev'
-import url from 'url'
-import { promisify } from 'util'
-import WebSocket from 'ws'
+import qs from 'querystring'
+import { WebSocket, HttpRequest } from 'uWebSockets.js'
 import { debug } from '../debug'
-import {
-  constructDataTypeFilter,
-  FilterAndStringifyStream,
-  getComputables,
-  getNormalizers,
-  ReplayNormalizedRequestOptions
-} from '../helpers'
+import { constructDataTypeFilter, getComputables, getNormalizers, ReplayNormalizedRequestOptions, wait } from '../helpers'
 
-const pipeline = promisify(stream.pipeline)
-
-export async function replayNormalizedWS(ws: WebSocket, req: IncomingMessage) {
+export async function replayNormalizedWS(ws: WebSocket, req: HttpRequest) {
   let messages: AsyncIterableIterator<any> | undefined
   try {
     const startTimestamp = new Date().getTime()
-    const parsedQuery = url.parse(req.url!, true).query
+    const parsedQuery = qs.decode(req.getQuery())
     const optionsString = parsedQuery['options'] as string
     const replayNormalizedOptions = JSON.parse(optionsString) as ReplayNormalizedRequestOptions
 
@@ -41,12 +30,28 @@ export async function replayNormalizedWS(ws: WebSocket, req: IncomingMessage) {
     })
 
     const filterByDataType = constructDataTypeFilter(options)
+
     messages = messagesIterables.length === 1 ? messagesIterables[0] : combine(...messagesIterables)
 
-    // pipe replayed messages through transform stream that filters those if needed and stringifies and then finally trough WebSocket stream
-    const webSocketStream = (WebSocket as any).createWebSocketStream(ws, { decodeStrings: false })
+    for await (const message of messages) {
+      if (!filterByDataType(message)) {
+        continue
+      }
 
-    await pipeline(stream.Readable.from(messages), new FilterAndStringifyStream(filterByDataType), webSocketStream)
+      const success = ws.send(JSON.stringify(message))
+      // handle backpressure in case of slow clients
+      if (!success) {
+        while (ws.getBufferedAmount() > 0) {
+          await wait(1)
+        }
+      }
+    }
+
+    while (ws.getBufferedAmount() > 0) {
+      await wait(100)
+    }
+
+    ws.end(1000, 'WS replay-normalized finished')
 
     const endTimestamp = new Date().getTime()
 
@@ -60,8 +65,10 @@ export async function replayNormalizedWS(ws: WebSocket, req: IncomingMessage) {
     if (messages !== undefined) {
       messages!.return!()
     }
+    if (!ws.closed) {
+      ws.end(1011, e.toString())
+    }
 
-    ws.close(1011, e.toString())
     debug('WebSocket /ws-replay-normalized  error: %o', e)
     console.error('WebSocket /ws-replay-normalized error:', e)
   }

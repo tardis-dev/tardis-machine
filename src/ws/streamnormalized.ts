@@ -1,26 +1,15 @@
-import { IncomingMessage } from 'http'
-import stream from 'stream'
 import { combine, compute, streamNormalized } from 'tardis-dev'
-import url from 'url'
-import { promisify } from 'util'
-import WebSocket from 'ws'
+import qs from 'querystring'
+import { WebSocket, HttpRequest } from 'uWebSockets.js'
 import { debug } from '../debug'
-import {
-  constructDataTypeFilter,
-  FilterAndStringifyStream,
-  getComputables,
-  getNormalizers,
-  StreamNormalizedRequestOptions
-} from '../helpers'
+import { constructDataTypeFilter, getComputables, getNormalizers, StreamNormalizedRequestOptions, wait } from '../helpers'
 
-const pipeline = promisify(stream.pipeline)
-
-export async function streamNormalizedWS(ws: WebSocket, req: IncomingMessage) {
+export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
   let messages: AsyncIterableIterator<any> | undefined
 
   try {
     const startTimestamp = new Date().getTime()
-    const parsedQuery = url.parse(req.url!, true).query
+    const parsedQuery = qs.decode(req.getQuery())
     const optionsString = parsedQuery['options'] as string
     const streamNormalizedOptions = JSON.parse(optionsString) as StreamNormalizedRequestOptions
 
@@ -44,10 +33,25 @@ export async function streamNormalizedWS(ws: WebSocket, req: IncomingMessage) {
     const filterByDataType = constructDataTypeFilter(options)
     messages = messagesIterables.length === 1 ? messagesIterables[0] : combine(...messagesIterables)
 
-    // pipe streamed messages through transform stream that filters those if needed and stringifies and then finally trough WebSocket stream
-    const webSocketStream = (WebSocket as any).createWebSocketStream(ws, { decodeStrings: false })
+    for await (const message of messages) {
+      if (!filterByDataType(message)) {
+        continue
+      }
 
-    await pipeline(stream.Readable.from(messages), new FilterAndStringifyStream(filterByDataType), webSocketStream)
+      const success = ws.send(JSON.stringify(message))
+      // handle backpressure in case of slow clients
+      if (!success) {
+        while (ws.getBufferedAmount() > 0) {
+          await wait(1)
+        }
+      }
+    }
+
+    while (ws.getBufferedAmount() > 0) {
+      await wait(100)
+    }
+
+    ws.end(1000, 'WS stream-normalized finished')
 
     const endTimestamp = new Date().getTime()
 
@@ -62,7 +66,9 @@ export async function streamNormalizedWS(ws: WebSocket, req: IncomingMessage) {
       messages!.return!()
     }
 
-    ws.close(1011, e.toString())
+    if (!ws.closed) {
+      ws.end(1011, e.toString())
+    }
 
     debug('WebSocket /ws-stream-normalized  error: %o', e)
     console.error('WebSocket /ws-stream-normalized error:', e)

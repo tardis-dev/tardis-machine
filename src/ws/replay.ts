@@ -1,7 +1,6 @@
-import { IncomingMessage } from 'http'
 import { combine, Exchange, replay, ReplayOptions } from 'tardis-dev'
-import url from 'url'
-import WebSocket from 'ws'
+import qs from 'querystring'
+import { WebSocket, HttpRequest } from 'uWebSockets.js'
 import { debug } from '../debug'
 import { wait } from '../helpers'
 import { SubscriptionMapper, subscriptionsMappers } from './subscriptionsmappers'
@@ -9,8 +8,8 @@ import { SubscriptionMapper, subscriptionsMappers } from './subscriptionsmappers
 const replaySessions: { [sessionKey: string]: ReplaySession | undefined } = {}
 let sessionsCounter = 0
 
-export function replayWS(ws: WebSocket, req: IncomingMessage) {
-  const parsedQuery = url.parse(req.url!, true).query
+export function replayWS(ws: WebSocket, req: HttpRequest) {
+  const parsedQuery = qs.decode(req.getQuery())
   const from = parsedQuery['from'] as string
   const to = parsedQuery['to'] as string
   const exchange = parsedQuery['exchange'] as Exchange
@@ -38,7 +37,7 @@ export function replayWS(ws: WebSocket, req: IncomingMessage) {
   if (matchingReplaySessionMeta.hasStarted) {
     const message = 'trying to add new WS connection to replay session that already started'
     debug(message)
-    ws.close(1011, message)
+    ws.end(1011, message)
     return
   }
 
@@ -54,15 +53,8 @@ class ReplaySession {
 
     debug('creating new ReplaySession')
 
-    setTimeout(async () => {
-      try {
-        await this._start()
-      } catch (e) {
-        debug('received error in ReplaySession, %o', e)
-        await this._closeAllConnections(e)
-      } finally {
-        this._onFinishedCallback()
-      }
+    setTimeout(() => {
+      this._start()
     }, SESSION_START_DELAY_MS)
   }
 
@@ -82,84 +74,88 @@ class ReplaySession {
   private _onFinishedCallback: () => void = () => {}
 
   private async _start() {
-    debug('starting ReplaySession, %s', this._connections.join(', '))
-    this._hasStarted = true
+    try {
+      debug('starting ReplaySession, %s', this._connections.join(', '))
+      this._hasStarted = true
 
-    const connectionsWithoutSubscriptions = this._connections.filter(c => c.subscriptionsCount === 0)
-    if (connectionsWithoutSubscriptions.length > 0) {
-      throw new Error(`No subscriptions received for websocket connection ${connectionsWithoutSubscriptions[0]}`)
-    }
-
-    // fast path for case when there is only single WS connection for given replay session
-    if (this._connections.length === 1) {
-      const connection = this._connections[0]
-
-      const messages = replay({
-        ...connection.replayOptions,
-        skipDecoding: true,
-        withDisconnects: false
-      })
-
-      for await (const { message } of messages) {
-        // wait until  buffer is empty
-        // sometimes slow clients can't keep up with messages arrival rate so we need to throttle
-        // https://nodejs.org/api/net.html#net_socket_buffersize
-        while (connection.ws.bufferedAmount > 0) {
-          await wait(1)
-        }
-
-        connection.ws.send(message, {
-          binary: false
-        })
+      const connectionsWithoutSubscriptions = this._connections.filter(c => c.subscriptionsCount === 0)
+      if (connectionsWithoutSubscriptions.length > 0) {
+        throw new Error(`No subscriptions received for websocket connection ${connectionsWithoutSubscriptions[0]}`)
       }
-    } else {
-      // map connections to replay messages streams enhanced with addtional ws field so
-      // when we combine streams by localTimestamp we'll know which ws we should send given message via
-      const messagesWithConnections = this._connections.map(async function*(connection) {
+
+      // fast path for case when there is only single WS connection for given replay session
+      if (this._connections.length === 1) {
+        const connection = this._connections[0]
+
         const messages = replay({
           ...connection.replayOptions,
           skipDecoding: true,
           withDisconnects: false
         })
 
-        for await (const { localTimestamp, message } of messages) {
-          yield {
-            ws: connection.ws,
-            localTimestamp: new Date(localTimestamp.toString()),
-            message
+        for await (const { message } of messages) {
+          const success = connection.ws.send(message)
+          // handle backpressure in case of slow clients
+          if (!success) {
+            while (connection.ws.getBufferedAmount() > 0) {
+              await wait(1)
+            }
           }
         }
-      })
+      } else {
+        // map connections to replay messages streams enhanced with addtional ws field so
+        // when we combine streams by localTimestamp we'll know which ws we should send given message via
+        const messagesWithConnections = this._connections.map(async function*(connection) {
+          const messages = replay({
+            ...connection.replayOptions,
+            skipDecoding: true,
+            withDisconnects: false
+          })
 
-      for await (const { ws, message } of combine(...messagesWithConnections)) {
-        // wait until  buffer is empty
-        // sometimes slow clients can't keep up with messages arrival rate so we need to throttle
-        // https://nodejs.org/api/net.html#net_socket_buffersize
-        while (ws.bufferedAmount > 0) {
-          await wait(1)
-        }
-
-        ws.send(message, {
-          binary: false
+          for await (const { localTimestamp, message } of messages) {
+            yield {
+              ws: connection.ws,
+              localTimestamp: new Date(localTimestamp.toString()),
+              message
+            }
+          }
         })
+
+        for await (const { ws, message } of combine(...messagesWithConnections)) {
+          const success = ws.send(message)
+          // handle backpressure in case of slow clients
+          if (!success) {
+            while (ws.getBufferedAmount() > 0) {
+              await wait(1)
+            }
+          }
+        }
       }
+
+      await this._closeAllConnections()
+
+      debug(
+        'finished ReplaySession with %d connections, %s',
+        this._connections.length,
+        this._connections.map(c => c.toString())
+      )
+    } catch (e) {
+      debug('received error in ReplaySession, %o', e)
+      await this._closeAllConnections(e)
+    } finally {
+      this._onFinishedCallback()
     }
-
-    await this._closeAllConnections()
-
-    debug(
-      'finished ReplaySession with %d connections, %s',
-      this._connections.length,
-      this._connections.map(c => c.toString())
-    )
   }
 
   private async _closeAllConnections(error: Error | undefined = undefined) {
     for (let i = 0; i < this._connections.length; i++) {
       const connection = this._connections[i]
+      if (connection.ws.closed) {
+        continue
+      }
 
       // let's wait until buffer is empty before closing normal connections
-      while (!error && connection.ws.bufferedAmount > 0) {
+      while (!error && connection.ws.getBufferedAmount() > 0) {
         await wait(100)
       }
 
@@ -190,16 +186,20 @@ class WebsocketConnection {
     }
 
     this._subscriptionsMapper = subscriptionsMappers[exchange]!
-    this.ws.on('message', this._convertSubscribeRequestToFilter.bind(this))
+    this.ws.onmessage = this._convertSubscribeRequestToFilter.bind(this)
   }
 
   public close(error: Error | undefined = undefined) {
+    if (this.ws.closed) {
+      return
+    }
+
     if (error) {
       debug('Closed websocket connection %s, error: %o', this, error)
-      this.ws.close(1011, error.toString())
+      this.ws.end(1011, error.toString())
     } else {
       debug('Closed websocket connection %s', this)
-      this.ws.close(1000, 'WS replay finished')
+      this.ws.end(1000, 'WS replay finished')
     }
   }
 
@@ -207,7 +207,8 @@ class WebsocketConnection {
     return `${JSON.stringify(this.replayOptions)}`
   }
 
-  private _convertSubscribeRequestToFilter(message: string) {
+  private _convertSubscribeRequestToFilter(messageRaw: ArrayBuffer) {
+    const message = Buffer.from(messageRaw).toString()
     try {
       const messageDeserialized = JSON.parse(message)
 

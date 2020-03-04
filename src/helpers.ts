@@ -212,20 +212,4 @@ function parseAsQuoteComputable(dataType: string) {
   throw new Error(`invalid data type: ${dataType}`)
 }
 
-export class FilterAndStringifyStream extends Transform {
-  constructor(private readonly filter: (message: any) => boolean) {
-    super({
-      objectMode: true
-    })
-  }
-
-  _transform(chunk: any, _encoding: string, callback: TransformCallback) {
-    if (this.filter(chunk)) {
-      this.push(JSON.stringify(chunk))
-    }
-
-    callback()
-  }
-}
-
 export const wait = (delayMS: number) => new Promise(resolve => setTimeout(resolve, delayMS))

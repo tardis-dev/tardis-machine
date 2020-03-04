@@ -1,17 +1,14 @@
 import fetch from 'node-fetch'
 import split2 from 'split2'
-import WebSocket from 'ws'
+import { WebSocket } from '@clusterws/cws'
 import { FilterForExchange, EXCHANGES, getExchangeDetails } from 'tardis-dev'
 import { TardisMachine } from '../src'
-import { wait } from '../src/helpers'
-
-const BitMEXClient = require('bitmex-realtime-api')
 
 const PORT = 8072
 const HTTP_REPLAY_DATA_FEEDS_URL = `http://localhost:${PORT}/replay`
 const HTTP_REPLAY_NORMALIZED_URL = `http://localhost:${PORT}/replay-normalized`
-const WS_REPLAY_NORMALIZED_URL = `ws://localhost:${PORT}/ws-replay-normalized`
-const WS_REPLAY_URL = `ws://localhost:${PORT}/ws-replay`
+const WS_REPLAY_NORMALIZED_URL = `ws://localhost:${PORT + 1}/ws-replay-normalized`
+const WS_REPLAY_URL = `ws://localhost:${PORT + 1}/ws-replay`
 
 const serializeOptions = (options: any) => {
   return encodeURIComponent(JSON.stringify(options))
@@ -21,7 +18,7 @@ describe('tardis-machine', () => {
 
   beforeAll(async () => {
     tardisMachine = new TardisMachine({ cacheDir: './.cache' })
-    await tardisMachine.run(PORT) // start server
+    await tardisMachine.start(PORT) // start server
   })
 
   afterAll(async () => {
@@ -217,18 +214,19 @@ describe('tardis-machine', () => {
           `${WS_REPLAY_URL}?exchange=coinbase&from=2019-06-01&to=2019-06-02`,
           message => {
             messages.push(message as string)
+          },
+          () => {
+            simpleCoinbaseClient.send({
+              type: 'subscribe',
+              channels: [
+                {
+                  name: 'matches',
+                  product_ids: ['ZEC-USDC']
+                }
+              ]
+            })
           }
         )
-
-        await simpleCoinbaseClient.send({
-          type: 'subscribe',
-          channels: [
-            {
-              name: 'matches',
-              product_ids: ['ZEC-USDC']
-            }
-          ]
-        })
 
         await simpleCoinbaseClient.closed()
         expect(messages).toMatchSnapshot()
@@ -244,14 +242,15 @@ describe('tardis-machine', () => {
           `${WS_REPLAY_URL}?exchange=cryptofacilities&from=2019-06-01&to=2019-06-02`,
           message => {
             messages.push(message as string)
+          },
+          () => {
+            simpleCFClient.send({
+              event: 'subscribe',
+              feed: 'trade',
+              product_ids: ['PI_XBTUSD']
+            })
           }
         )
-
-        await simpleCFClient.send({
-          event: 'subscribe',
-          feed: 'trade',
-          product_ids: ['PI_XBTUSD']
-        })
 
         await simpleCFClient.closed()
         expect(messages).toMatchSnapshot()
@@ -267,15 +266,16 @@ describe('tardis-machine', () => {
           `${WS_REPLAY_URL}?exchange=bitstamp&from=2019-06-01&to=2019-06-02`,
           message => {
             messages.push(message as string)
+          },
+          () => {
+            simpleBitstampClient.send({
+              event: 'bts:subscribe',
+              data: {
+                channel: 'live_trades_ltcusd'
+              }
+            })
           }
         )
-
-        await simpleBitstampClient.send({
-          event: 'bts:subscribe',
-          data: {
-            channel: 'live_trades_ltcusd'
-          }
-        })
 
         await simpleBitstampClient.closed()
         expect(messages).toMatchSnapshot()
@@ -288,13 +288,14 @@ describe('tardis-machine', () => {
       async () => {
         let messages: string[] = []
         const simpleOkexClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=okex&from=2019-06-01&to=2019-06-01 02:00`,
+          `${WS_REPLAY_URL}?exchange=okex&from=2019-06-01&to=2019-06-01T02:00Z`,
           message => {
             messages.push(message as string)
+          },
+          () => {
+            simpleOkexClient.send({ op: 'subscribe', args: ['spot/trade:BTC-USDT'] })
           }
         )
-
-        await simpleOkexClient.send({ op: 'subscribe', args: ['spot/trade:BTC-USDT'] })
 
         await simpleOkexClient.closed()
         expect(messages).toMatchSnapshot()
@@ -307,40 +308,29 @@ describe('tardis-machine', () => {
       async end => {
         let trades: string[] = []
         let wsURL = `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-02`
-        const simpleBitmexWSClient = new SimpleWebsocketClient(wsURL, message => {
-          const parsedMessage = JSON.parse(message)
-          if (parsedMessage.action != 'insert') return
+        const simpleBitmexWSClient = new SimpleWebsocketClient(
+          wsURL,
+          message => {
+            const parsedMessage = JSON.parse(message)
+            if (parsedMessage.action != 'insert') return
 
-          parsedMessage.data.forEach((trade: any) => {
-            if (trade.symbol != 'ADAM19') return
+            parsedMessage.data.forEach((trade: any) => {
+              if (trade.symbol != 'ADAM19') return
 
-            trades.push(JSON.stringify(trade))
-          })
-        })
-
-        await simpleBitmexWSClient.send({
-          op: 'subscribe',
-          args: ['trade:ADAM19']
-        })
+              trades.push(JSON.stringify(trade))
+            })
+          },
+          () => {
+            simpleBitmexWSClient.send({
+              op: 'subscribe',
+              args: ['trade:ADAM19']
+            })
+          }
+        )
 
         await simpleBitmexWSClient.closed()
         expect(trades).toMatchSnapshot('ADAM19Trades')
-
-        let officialClientTrades: string[] = []
-
-        const officialBitMEXClient = new BitMEXClient({ endpoint: wsURL, maxTableLen: 20000 })
-
-        officialBitMEXClient.addStream('ADAM19', 'trade', function(data: any) {
-          if (!data.length) return
-
-          const trades = data.slice(officialClientTrades.length, data.length).map((t: any) => JSON.stringify(t))
-          officialClientTrades.push(...trades)
-        })
-
-        officialBitMEXClient.on('end', () => {
-          expect(officialClientTrades).toMatchSnapshot('ADAM19Trades')
-          end()
-        })
+        end()
       },
       10 * 60 * 1000
     )
@@ -357,13 +347,14 @@ describe('tardis-machine', () => {
           message => {
             messagesCount++
             lastBitmexMessage = message
+          },
+          () => {
+            simpleBitmexWSClient.send({
+              op: 'subscribe',
+              args: ['trade:XBTUSD', 'orderBookL2:XBTUSD']
+            })
           }
         )
-
-        await simpleBitmexWSClient.send({
-          op: 'subscribe',
-          args: ['trade:XBTUSD', 'orderBookL2:XBTUSD']
-        })
 
         await simpleBitmexWSClient.closed()
         console.log(`WS received  for BitMEX ${messagesCount} in ${(new Date().getTime() - startTimestamp) / 1000} seconds`)
@@ -387,6 +378,12 @@ describe('tardis-machine', () => {
           message => {
             lastBitmexMessage = message
             bitmexMessagesCount++
+          },
+          () => {
+            simpleBitmexWSClient.send({
+              op: 'subscribe',
+              args: ['trade:XBTUSD', 'orderBookL2:XBTUSD']
+            })
           }
         )
 
@@ -395,29 +392,25 @@ describe('tardis-machine', () => {
           message => {
             lastDeribitMessage = message
             deribitMessagesCount++
+          },
+          () => {
+            simpleDeribitWSClient.send({
+              jsonrpc: '2.0',
+              method: 'public/subscribe',
+              params: {
+                channels: ['book.BTC-PERPETUAL.raw']
+              }
+            })
+
+            simpleDeribitWSClient.send({
+              jsonrpc: '2.0',
+              method: 'public/subscribe',
+              params: {
+                channels: ['trades.BTC-PERPETUAL.raw']
+              }
+            })
           }
         )
-
-        await simpleBitmexWSClient.send({
-          op: 'subscribe',
-          args: ['trade:XBTUSD', 'orderBookL2:XBTUSD']
-        })
-
-        await simpleDeribitWSClient.send({
-          jsonrpc: '2.0',
-          method: 'public/subscribe',
-          params: {
-            channels: ['book.BTC-PERPETUAL.raw']
-          }
-        })
-
-        await simpleDeribitWSClient.send({
-          jsonrpc: '2.0',
-          method: 'public/subscribe',
-          params: {
-            channels: ['trades.BTC-PERPETUAL.raw']
-          }
-        })
 
         await simpleBitmexWSClient.closed()
 
@@ -449,39 +442,41 @@ describe('tardis-machine', () => {
         let deribitMessages: string[] = []
 
         const simpleBitmexWSClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-01 00:05`,
+          `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-01T00:05Z&session=common`,
           message => {
             bitmexMessages.push(message)
+          },
+          () => {
+            simpleBitmexWSClient.send({
+              op: 'subscribe',
+              args: ['trade:XBTUSD', 'orderBookL2:XBTUSD']
+            })
           }
         )
 
         const simpleDeribitWSClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=deribit&from=2019-06-01&to=2019-06-01 00:05`,
+          `${WS_REPLAY_URL}?exchange=deribit&from=2019-06-01&to=2019-06-01T00:05Z&session=common`,
           message => {
             deribitMessages.push(message)
+          },
+          () => {
+            simpleDeribitWSClient.send({
+              jsonrpc: '2.0',
+              method: 'public/subscribe',
+              params: {
+                channels: ['book.BTC-PERPETUAL.raw']
+              }
+            })
+
+            simpleDeribitWSClient.send({
+              jsonrpc: '2.0',
+              method: 'public/subscribe',
+              params: {
+                channels: ['trades.BTC-PERPETUAL.raw']
+              }
+            })
           }
         )
-
-        await simpleBitmexWSClient.send({
-          op: 'subscribe',
-          args: ['trade:XBTUSD', 'orderBookL2:XBTUSD']
-        })
-
-        await simpleDeribitWSClient.send({
-          jsonrpc: '2.0',
-          method: 'public/subscribe',
-          params: {
-            channels: ['book.BTC-PERPETUAL.raw']
-          }
-        })
-
-        await simpleDeribitWSClient.send({
-          jsonrpc: '2.0',
-          method: 'public/subscribe',
-          params: {
-            channels: ['trades.BTC-PERPETUAL.raw']
-          }
-        })
 
         await simpleBitmexWSClient.closed()
 
@@ -502,13 +497,14 @@ describe('tardis-machine', () => {
       async () => {
         let messages: string[] = []
         const simpleBinanceClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=binance&from=2019-07-01&to=2019-07-01 00:05`,
+          `${WS_REPLAY_URL}?exchange=binance&from=2019-07-01&to=2019-07-01T00:05Z`,
           message => {
             messages.push(message as string)
+          },
+          () => {
+            simpleBinanceClient.send({ method: 'SUBSCRIBE', params: ['btcusdt@trade'] })
           }
         )
-
-        await simpleBinanceClient.send({ method: 'SUBSCRIBE', params: ['btcusdt@trade'] })
 
         await simpleBinanceClient.closed()
         expect(messages).toMatchSnapshot()
@@ -525,7 +521,7 @@ describe('tardis-machine', () => {
           exchange: 'bitmex',
           symbols: ['ETHUSD'],
           from: '2019-06-01',
-          to: '2019-06-01 00:01',
+          to: '2019-06-01T00:01Z',
           dataTypes: ['trade', 'book_change']
         }
 
@@ -548,7 +544,7 @@ describe('tardis-machine', () => {
             exchange: 'bitmex',
             symbols: ['ETHUSD'],
             from: '2019-06-01',
-            to: '2019-06-01 00:01',
+            to: '2019-06-01T00:01Z',
             dataTypes: ['quote', 'book_snapshot_5_6s']
           }
 
@@ -573,14 +569,14 @@ describe('tardis-machine', () => {
             exchange: 'bitmex',
             symbols: ['ETHUSD'],
             from: '2019-06-01',
-            to: '2019-06-01 00:01',
+            to: '2019-06-01T00:01Z',
             dataTypes: ['trade_bar_1s']
           },
           {
             exchange: 'deribit',
             symbols: ['BTC-PERPETUAL'],
             from: '2019-06-01',
-            to: '2019-06-01 00:01',
+            to: '2019-06-01T00:01Z',
             dataTypes: ['trade_bar_1s']
           }
         ]
@@ -602,7 +598,7 @@ describe('tardis-machine', () => {
   describe('WS /ws-stream-normalized', () => {
     test(
       'streams normalized real-time messages for each supported exchange as single consolidated stream',
-      async () => {
+      async end => {
         const exchangesWithDerivativeInfo = [
           'bitmex',
           'binance-futures',
@@ -638,22 +634,15 @@ describe('tardis-machine', () => {
           })
         )
 
-        var ws = new WebSocket(`ws://localhost:${PORT}/ws-stream-normalized?options=${serializeOptions(options)}`)
-
-        const realtimeMessagesStream = (WebSocket as any).createWebSocketStream(ws, {
-          readableObjectMode: true
-        }) as AsyncIterableIterator<Buffer>
-
         let count = 0
 
-        for await (const msgBuffer of realtimeMessagesStream) {
-          JSON.parse(msgBuffer as any)
+        new SimpleWebsocketClient(`ws://localhost:${PORT + 1}/ws-stream-normalized?options=${serializeOptions(options)}`, message => {
+          JSON.parse(message)
           count++
-
-          if (count > 200) {
-            break
+          if (count > 20000) {
+            end()
           }
-        }
+        })
       },
       1000 * 60 * 4
     )
@@ -662,29 +651,20 @@ describe('tardis-machine', () => {
 
 class SimpleWebsocketClient {
   private readonly _socket: WebSocket
-  constructor(url: string, onMessageCB: (message: string) => void) {
+  constructor(url: string, onMessageCB: (message: string) => void, onOpen: () => void = () => {}) {
     this._socket = new WebSocket(url)
     this._socket.on('message', onMessageCB)
+    this._socket.on('open', onOpen)
     this._socket.on('error', err => {
       console.log('SimpleWebsocketClient Error', err)
     })
   }
 
-  public async send(payload: any) {
-    if (this._socket.readyState != WebSocket.OPEN) {
-      await new Promise(resolve => {
-        this._socket.once('open', resolve)
-      })
-    }
-
+  public send(payload: any) {
     this._socket.send(JSON.stringify(payload))
   }
 
   public async closed() {
-    await wait(1000)
-    if (this._socket.readyState != WebSocket.OPEN) {
-      return
-    }
     await new Promise(resolve => {
       this._socket.on('close', () => {
         resolve()

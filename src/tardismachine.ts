@@ -1,15 +1,15 @@
 import findMyWay from 'find-my-way'
 import http from 'http'
 import { clearCache, init } from 'tardis-dev'
-import url from 'url'
-import WebSocket from 'ws'
-import { bitmexWsHelp, replayHttp, replayNormalizedHttp } from './http'
+import { App, TemplatedApp, WebSocket, HttpRequest } from 'uWebSockets.js'
+import { replayHttp, replayNormalizedHttp } from './http'
 import { replayNormalizedWS, replayWS, streamNormalizedWS } from './ws'
 
 const pkg = require('../package.json')
 
 export class TardisMachine {
   private readonly _httpServer: http.Server
+  private readonly _wsServer: TemplatedApp
 
   constructor(private readonly options: Options) {
     init({
@@ -29,33 +29,32 @@ export class TardisMachine {
 
     router.on('GET', '/replay', replayHttp)
     router.on('GET', '/replay-normalized', replayNormalizedHttp)
-    router.on('GET', '/api/v1/schema/websocketHelp', bitmexWsHelp)
 
-    this._initWebSocketServer()
-  }
-
-  private _initWebSocketServer() {
-    const websocketServer = new WebSocket.Server({ server: this._httpServer })
-
-    // super simple routing for websocket routes
-    const routes = {
+    const wsRoutes = {
       '/ws-replay': replayWS,
       '/ws-replay-normalized': replayNormalizedWS,
       '/ws-stream-normalized': streamNormalizedWS
     } as any
 
-    websocketServer.on('connection', async (ws, request) => {
-      const path = url
-        .parse(request.url!)
-        .pathname!.replace(/\/$/, '')
-        .toLocaleLowerCase()
+    this._wsServer = App().ws('/*', {
+      open: (ws: WebSocket, req: HttpRequest) => {
+        const path = req.getUrl().toLocaleLowerCase()
+        ws.closed = false
+        const matchingRoute = wsRoutes[path]
 
-      const matchingRoute = routes[path]
+        if (matchingRoute !== undefined) {
+          matchingRoute(ws, req)
+        } else {
+          ws.end(1008)
+        }
+      },
 
-      if (matchingRoute !== undefined) {
-        matchingRoute(ws, request)
-      } else {
-        ws.close(1008)
+      message: (ws: WebSocket, message: ArrayBuffer) => {
+        ws.onmessage(message)
+      },
+
+      close: (ws: WebSocket) => {
+        ws.closed = true
       }
     })
   }
@@ -68,7 +67,15 @@ export class TardisMachine {
     await new Promise((resolve, reject) => {
       try {
         this._httpServer.on('error', reject)
-        this._httpServer.listen(port, resolve)
+        this._httpServer.listen(port, () => {
+          this._wsServer.listen(port + 1, listenSocket => {
+            if (listenSocket) {
+              resolve()
+            } else {
+              reject(new Error('ws server did not start'))
+            }
+          })
+        })
       } catch (e) {
         reject(e)
       }
