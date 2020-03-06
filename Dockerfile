@@ -2,6 +2,8 @@
 from node:13-slim
 # version arg contains current git tag
 ARG VERSION_ARG
+# install git
+RUN apk add --no-cache git
 # install tardis-machine globally (exposes tardis-machine command)
 RUN npm install --global --unsafe-perm tardis-machine@$VERSION_ARG
 # run it
