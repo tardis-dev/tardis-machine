@@ -4,7 +4,7 @@
   "engines": {
     "node": ">=12"
   },
-  "description": "Locally runnable server with built-in data caching, providing tick-level historical and real-time cryptocurrency market data  HTTP and WebSocket APIs",
+  "description": "Locally runnable server with built-in data caching, providing both tick-level historical and consolidated real-time cryptocurrency market data via HTTP and WebSocket APIs",
   "main": "dist/index.js",
   "source": "src/index.js",
   "types": "dist/index.d.ts",
