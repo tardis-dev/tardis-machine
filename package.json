@@ -4,7 +4,7 @@
   "engines": {
     "node": ">=12"
   },
-  "description": "Fast locally installable server with built-in local caching, available via NPM & Docker, providing on-demand tick-level cryptocurrency real-time streaming and market data replay from any moment in time in exchange's WebSocket data format that uses tardis.dev HTTP API under the hood.",
+  "description": "Locally runnable server with built-in data caching, providing tick-level historical and real-time cryptocurrency market data  HTTP and WebSocket APIs",
   "main": "dist/index.js",
   "source": "src/index.js",
   "types": "dist/index.d.ts",
@@ -27,18 +27,32 @@
     "bin",
     "benchmark.js"
   ],
+
   "keywords": [
     "cryptocurrency data feed",
     "market data",
     "api client",
     "crypto markets data replay",
     "historical data",
+    "real-time cryptocurrency market data feed",
     "historical cryptocurrency prices",
     "cryptocurrency api",
-    "historical market data",
+    "real-time normalized WebSocket cryptocurrency markets data",
+    "normalized cryptocurrency market data API",
+    "order book reconstruction",
+    "market data normalization",
+    "cryptocurrency api",
+    "cryptocurrency",
+    "orderbook",
+    "exchange",
+    "websocket",
+    "realtime",
+    "bitmex",
+    "binance",
+    "trading",
+    "high granularity order book data",
     "replay service",
-    "historical cryptocurrency market data replay API",
-    "crypto markets data replay"
+    "historical cryptocurrency market data replay API"
   ],
   "license": "MPL-2.0",
   "dependencies": {

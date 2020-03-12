@@ -1,169 +1,50 @@
-# tardis-machine
-
-`tardis-machine` is a fast locally installable server with built-in local caching, that uses [tardis.dev HTTP API](https://app.gitbook.com/@tardisdev/s/workspace/api#http-api) under the hood. It provides streaming HTTP and WebSocket endpoints that offer on-demand tick-level crypto market data replay from any moment in time in exchange's Websocket data format.
+# Tardis Machine Server
 
 [![Version](https://img.shields.io/npm/v/tardis-machine.svg)](https://www.npmjs.org/package/tardis-machine)
 
-# THIS IS DOCUMENTATION FOR v1 of tardis-machine, see https://docs.tardis.dev/api/tardis-machine for v3 docs.
+[Tardis-machine](https://docs.tardis.dev/api/tardis-machine) is a fast, locally runnable server with built-in data caching that uses [Tardis.dev HTTP API](https://docs.tardis.dev/api/http) under the hood. It allows efficiently requesting historical market data via it's streaming HTTP and WebSocket endpoints and can be installed via [npm](https://docs.tardis.dev/api/tardis-machine#npm) and [Docker](https://docs.tardis.dev/api/tardis-machine#docker).
 
-Check out [`tardis-client`](https://github.com/tardis-dev/node-client) as well if you're using Node.js.
+<br/>
 
-## HTTP endpoint
+## Features
 
-Accessible via **`/replay?exchange=<EXCHANGE>&from=<FROM_DATE>&to=<TO_DATE>&filters=<FILTERS>`**
+- efficient data replay API endpoints returning historical market data for whole time periods \(in contrast to [Tardis.dev HTTP API](https://docs.tardis.dev/api/http) where single call returns data for single minute time period\)
 
-Allows replaying historical crypto exchange WebSocket data feed via streaming HTTP response (new line delimited JSON).
-Returns up to 400 000 messages per second (depending on the machine set-up and local cache ratio).
+- [exchange-native market data APIs](https://docs.tardis.dev/api/tardis-machine#exchange-native-market-data-apis)
 
-#### Example requests:
+  - tick-by-tick historical market data replay in [exchange-native format](https://docs.tardis.dev/faq/data#what-is-a-difference-between-exchange-native-and-normalized-data-format)
 
-- `http://localhost:8000/replay?exchange=bitmex&from=2019-05-01&to=2019-05-02&filters=[{"channel":"trade"}]` - returns all trades that happened on BitMEX on 1st of May 2019 in [ndjson format](http://ndjson.org/).
-- `http://localhost:8000/replay?exchange=bitmex&from=2019-04-01&to=2019-04-02&filters=[{"channel":"trade","symbols":["XBTUSD","ETHUSD"]},{"channel":"orderBookL2","symbols":["XBTUSD"]}]` - returns all trades that happened on BitMEX on 1st of April 2019 for `XBTUSD` and `ETHUSD` as well as `orderbookL2` snapshot and updates for `XBTUSD` in [ndjson format](http://ndjson.org/).
+  - [HTTP](https://docs.tardis.dev/api/tardis-machine#http-get-replay-options-options) and [WebSocket](https://docs.tardis.dev/api/tardis-machine#websocket-ws-replay-exchange-exchange-and-from-fromdate-and-to-todate) endpoints
 
-#### Available query string params params:
+  - [WebSocket API](https://docs.tardis.dev/api/tardis-machine#websocket-ws-replay-exchange-exchange-and-from-fromdate-and-to-todate) providing historical market data replay from any given past point in time with the same data format and 'subscribe' logic as real-time exchanges' APIs - in many cases **existing exchanges' WebSocket clients can be used to connect to this endpoint**
 
-| name                 | type                                                                            | default value | description                                                                                                                                                                                   |
-| -------------------- | ------------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `exchange`           | `string`                                                                        | -             | requested exchange name. Check out [allowed echanges](https://github.com/tardis-dev/node-client/blob/master/src/consts.ts)                                                                    |
-| `from`               | `string`                                                                        | -             | replay period start date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                                                                                                               |
-| `to`                 | `string`                                                                        | -             | replay period end date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                                                                                                                 |
-| `filters` (optional) | `Url encoded JSON string with {channel:string, symbols?: string[]}[] structure` | undefined     | optional filters of requested data feed. Use [/exchanges/:/exchange](https://docs.tardis.dev/api#exchanges-exchange) API call to get allowed channel names and symbols for requested exchange |
+- [normalized market data APIs](https://docs.tardis.dev/api/tardis-machine#normalized-market-data-apis)
+  <br/>
 
-#### Example response snippet:
+  - consistent format for accessing market data across multiple exchanges
 
-```js
-{"localTimestamp":"2019-05-01T00:09:42.2760012Z","message":{"table":"orderBookL2","action":"update","data":[{"symbol":"XBTUSD","id":8799473750,"side":"Buy","size":2333935}]}}
-{"localTimestamp":"2019-05-01T00:09:42.2932826Z","message":{"table":"orderBookL2","action":"update","data":[{"symbol":"XBTUSD","id":8799474250,"side":"Buy","size":227485}]}}
-{"localTimestamp":"2019-05-01T00:09:42.4249304Z","message":{"table":"trade","action":"insert","data":[{"timestamp":"2019-05-01T00:09:42.407Z","symbol":"XBTUSD","side":"Buy","size":1500,"price":5263,"tickDirection":"ZeroPlusTick","trdMatchID":"29d7de7f-27b6-9574-48d1-3ee9874831cc","grossValue":28501500,"homeNotional":0.285015,"foreignNotional":1500}]}}
-{"localTimestamp":"2019-05-01T00:09:42.4249403Z","message":{"table":"orderBookL2","action":"update","data":[{"symbol":"XBTUSD","id":8799473700,"side":"Sell","size":454261}]}}
-{"localTimestamp":"2019-05-01T00:09:42.4583155Z","message":{"table":"orderBookL2","action":"update","data":[{"symbol":"XBTUSD","id":8799473750,"side":"Buy","size":2333838},{"symbol":"XBTUSD","id":8799473800,"side":"Buy","size":547746}]}}
-```
+  - [HTTP](https://docs.tardis.dev/api/tardis-machine#http-get-replay-normalized-options-options) and [WebSocket](https://docs.tardis.dev/api/tardis-machine#websocket-ws-replay-normalized-options-options) endpoints
 
-#### Response structure (single line):
+  - synchronized [historical market data replay across multiple exchanges](https://docs.tardis.dev/api/tardis-machine#http-get-replay-normalized-options-options)
 
-`localTimestamp` is a date when message has been received in ISO 8601 format with 100 nano second resolution.
+  - [consolidated real-time data streaming](https://docs.tardis.dev/api/tardis-machine#websocket-ws-stream-normalized-options-options) connecting directly to exchanges' WebSocket APIs
 
-`message` is and JSON object/array with exactly the same structure as provided by particular exchange.
+  - customizable [order book snapshots](https://docs.tardis.dev/api/tardis-machine#book_snapshot_-number_of_levels-_-snapshot_interval-time_unit) and [trade bars](https://docs.tardis.dev/api/tardis-machine#trade_bar_-aggregation_interval-suffix) data types
+  - seamless [switching between real-time data streaming and historical data replay](https://docs.tardis.dev/api/tardis-machine#normalized-market-data-apis)
+    <br/>
 
-**Check out [tests](https://github.com/tardis-dev/tardis-machine/blob/master/test/tardismachine.test.ts#L56) to see how such messages stream can be easily consumed using Node.js streams and async iterators.**
+- transparent historical local data caching \(cached data is stored on disk in compressed GZIP format and decompressed
+  on demand when reading the data\)
+  <br/>
 
-## WebSocket endpoint
+- support for top cryptocurrency exchanges: BitMEX, Deribit, Binance, Binance Futures, FTX, OKEx, Huobi Global, Huobi DM, bitFlyer, Bitstamp, Coinbase Pro, Crypto Facilities, Gemini, Kraken, Bitfinex, Bybit, OKCoin, CoinFLEX and more
+  <br/>
+  <br/>
+  <br/>
 
-Accessible via **`/ws-replay?exchange=<EXCHANGE>&from=<FROM_DATE>&to=<TO_DATE>`**
+## Documentation
 
-Exchanges & various 3rd party data providers WebSocket APIs allows subscribing only to real-time data feeds and there is no way to subscribe to and **"replay"** market from any point in the past. By using `tardis-machine` that is now possible.
+### [See official docs](https://docs.tardis.dev/api/tardis-machine).
 
-#### Example:
-
-Example below shows how to subscribe to BitMEX historical data feed (from 2019-06-01 to 2019-06-02) to `trade:XBTUSD` and `orderBookL2:XBTUSD` channels and replay such stream as if it was a real-time one. `Subscribe` request messages format as well as received messages format is exactly the same as in native exchanges WebSocket APIs.
-
-```js
-const ws = new WebSocket('ws://localhost:8000/ws-replay?exchange=bitmex&from=2019-06-01&to=2019-06-02')
-
-ws.onmessage = message => {
-  console.log(message)
-}
-
-ws.onopen = () => {
-  const subscribePayload = {
-    op: 'subscribe',
-    args: ['trade:XBTUSD', 'orderBookL2:XBTUSD']
-  }
-
-  ws.send(JSON.stringify(subscribePayload))
-}
-```
-
-In many cases such websocket historical data feeds can be consumed using already available WebSocket clients for various exchanges as in example below.
-
-**That opens the possibility of having single data pipeline for real-time trading and backtesting.**
-
-Check out [tests](https://github.com/tardis-dev/tardis-machine/blob/master/test/tardismachine.test.ts#L81) for more examples.
-
-#### Available query string params:
-
-In contrast to HTTP API for WebSocket API filters aren't provided explicitly as those are created based on `subscribe` messages over WebSocket received in first 5 seconds of the connection.
-
-| name       | type     | default value | description                                                                                                                                |
-| ---------- | -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `exchange` | `string` | -             | requested exchange name. Currently supported: `bitmex, coinbase, deribit, cryptofacilities, bitstamp, okex, ftx, kraken, bitflyer, gemini` |
-| `from`     | `string` | -             | replay period start date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                                                            |
-| `to`       | `string` | -             | replay period start date (UTC) - eg: `2019-04-05` or `2019-05-05T00:00:00.000Z`                                                            |
-
-## Installation
-
-- ### `npx` <sub>(requires Node.js v12 installed on host machine)</sub>
-
-  That will start tardis-machine server running on port `8000` by default (port can be changes `--port`)
-
-  ```sh
-  npx tardis-machine --api-key=YOUR_API_KEY
-  ```
-
-  If you'd like to test it out on sample data (first full day of each month) simply run the command without `--api-key` option.
-
-  ```sh
-  npx tardis-machine
-  ```
-
-  Run `npx tardis-machine --help` to see all available options (setting custom cache dir etc.)
-
-- ### `npm` <sub>(requires Node.js v12 installed on host machine)</sub>
-
-  Installs `tardis-machine` globally.
-
-  ```sh
-  npm install -g tardis-machine
-
-  tardis-machine --api-key=YOUR_API_KEY
-
-  ```
-
-  If you'd like to test it out on sample data (first full day of each month) simply run the command without `--api-key` option.
-
-  ```sh
-  tardis-machine
-  ```
-
-  Run `tardis-machine --help` to see all available options (setting custom cache dir etc.)
-
-- ### Docker
-
-  ```sh
-  docker run -v ./host-cache-dir:/.cache -p 8000:8000 -e "TM_API_KEY=YOUR_API_KEY" -d tardisdev/tardis-machine
-  ```
-
-  Command above will pull and run latest version of [`tardisdev/tardis-machine` image](https://hub.docker.com/r/tardisdev/tardis-machine). Local proxy will be available on host via `8000` port (eg `http://localhost:8000/replay/...`).
-  It will also pass `YOUR_API_KEY` for accessing the data (otherwise only first day of each month is accessible).
-  Finally it will use `./host-cache-dir` as persistent volume ([bind mount](https://docs.docker.com/storage/bind-mounts/)) cache dir (otherwise each docker restart will result in loosing local cache)
-
-  In order to debug issues/see detailed logs one can run:
-
-  ```sh
-  docker run -v ./host-cache-dir:/.cache -p 8000:8000 -e "TM_API_KEY=YOUR_API_KEY" -e="DEBUG=tardis*" -d tardisdev/tardis-machine
-  ```
-
-  Setting `DEBUG=tardis*` wil cause to print various useful debug logs to stdout.
-
-  If using volumes causes issues (Windows?) it's perfectly fine to run docker without it (with the caveat of potentially poor local cache ratio after container restart)
-
-  ```sh
-  ### running without persitent local cache
-  docker run -p 8000:8000 -e "TM_API_KEY=YOUR_API_KEY" -d tardisdev/tardis-machine
-  ```
-
-  [`tardisdev/tardis-machine` docker image](https://hub.docker.com/r/tardisdev/tardis-machine) can be used in K8S setup as well (just set up proper env variables and persisten volumes in analogue way).
-
-## FAQ
-
-#### How to debug it if something went wrong?
-
-tardis-machine uses [debug](https://github.com/visionmedia/debug) package for verbose logging and debugging purposes that can be enabled via `DEBUG` environment variable set to `tardis*`.
-
-#### Where can I find more details about tardis.dev API?
-
-Check out [API docs](https://docs.tardis.dev/api).
-
-## License
-
-MPL-2.0
+<br/>
+<br/>
