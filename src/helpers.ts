@@ -38,7 +38,7 @@ export function* getNormalizers(dataTypes: string[]): IterableIterator<MapperFac
   }
 
   if (dataTypes.includes('derivative_ticker')) {
-    normalizeDerivativeTickers
+    yield normalizeDerivativeTickers
   }
 }
 
