@@ -17,9 +17,17 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
 
     const options = Array.isArray(streamNormalizedOptions) ? streamNormalizedOptions : [streamNormalizedOptions]
 
-    const messagesIterables = options.map(option => {
+    const messagesIterables = options.map((option) => {
       // let's map from provided options to options and normalizers that needs to be added for dataTypes provided in options
-      const messages = streamNormalized(option, ...getNormalizers(option.dataTypes))
+      const messages = streamNormalized(
+        {
+          ...option,
+          onError: (error) => {
+            debug('%s error: %o', option.exchange, error)
+          },
+        },
+        ...getNormalizers(option.dataTypes)
+      )
       // separately check if any computables are needed for given dataTypes
       const computables = getComputables(option.dataTypes)
 
