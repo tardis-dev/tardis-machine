@@ -16,7 +16,7 @@
     "test": "jest --runInBand --forceExit",
     "benchmark": "node ./benchmark.js",
     "prepare": "npm run build",
-    "release": "cross-var \"npm run build && git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish --access=public\""
+    "release": "cross-var \"npm run build && npm run test && git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish --access=public\""
   },
   "bin": {
     "tardis-machine": "./bin/tardis-machine.js"
@@ -57,16 +57,16 @@
   "license": "MPL-2.0",
   "dependencies": {
     "debug": "^4.1.1",
-    "find-my-way": "^2.2.1",
+    "find-my-way": "^2.2.2",
     "is-docker": "^2.0.0",
-    "tardis-dev": "^8.0.4",
+    "tardis-dev": "^9.0.0",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v17.3.0",
-    "yargs": "^15.1.0"
+    "yargs": "^15.3.1"
   },
   "devDependencies": {
-    "@clusterws/cws": "^1.4.0",
+    "@clusterws/cws": "^1.5.0",
     "@types/debug": "^4.1.5",
-    "@types/jest": "^25.1.3",
+    "@types/jest": "^25.1.4",
     "@types/node": "^13.7.7",
     "@types/node-fetch": "^2.5.5",
     "@types/split2": "^2.1.6",
@@ -74,9 +74,9 @@
     "cross-var": "^1.1.0",
     "husky": "^4.2.3",
     "jest": "^25.1.0",
-    "lint-staged": "^10.0.8",
+    "lint-staged": "^10.0.9",
     "node-fetch": "^2.6.0",
-    "prettier": "^1.19.1",
+    "prettier": "^2.0.2",
     "split2": "^3.1.1",
     "ts-jest": "^25.2.1",
     "typescript": "^3.8.3"
