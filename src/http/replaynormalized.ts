@@ -50,7 +50,7 @@ async function writeMessagesToResponse(res: OutgoingMessage, options: ReplayNorm
 
   const replayNormalizedOptions = Array.isArray(options) ? options : [options]
 
-  const messagesIterables = replayNormalizedOptions.map(option => {
+  const messagesIterables = replayNormalizedOptions.map((option) => {
     // let's map from provided options to options and normalizers that needs to be added for dataTypes provided in options
     const messages = replayNormalized(option, ...getNormalizers(option.dataTypes))
     // separately check if any computables are needed for given dataTypes

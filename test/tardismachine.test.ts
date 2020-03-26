@@ -1,7 +1,7 @@
+import { WebSocket } from '@clusterws/cws'
 import fetch from 'node-fetch'
 import split2 from 'split2'
-import { WebSocket } from '@clusterws/cws'
-import { FilterForExchange, EXCHANGES, getExchangeDetails } from 'tardis-dev'
+import { EXCHANGES, FilterForExchange, getExchangeDetails } from 'tardis-dev'
 import { TardisMachine } from '../src'
 
 const PORT = 8072
@@ -212,7 +212,7 @@ describe('tardis-machine', () => {
         let messages: string[] = []
         const simpleCoinbaseClient = new SimpleWebsocketClient(
           `${WS_REPLAY_URL}?exchange=coinbase&from=2019-06-01&to=2019-06-02`,
-          message => {
+          (message) => {
             messages.push(message as string)
           },
           () => {
@@ -240,7 +240,7 @@ describe('tardis-machine', () => {
         let messages: string[] = []
         const simpleCFClient = new SimpleWebsocketClient(
           `${WS_REPLAY_URL}?exchange=cryptofacilities&from=2019-06-01&to=2019-06-02`,
-          message => {
+          (message) => {
             messages.push(message as string)
           },
           () => {
@@ -264,7 +264,7 @@ describe('tardis-machine', () => {
         let messages: string[] = []
         const simpleBitstampClient = new SimpleWebsocketClient(
           `${WS_REPLAY_URL}?exchange=bitstamp&from=2019-06-01&to=2019-06-02`,
-          message => {
+          (message) => {
             messages.push(message as string)
           },
           () => {
@@ -289,7 +289,7 @@ describe('tardis-machine', () => {
         let messages: string[] = []
         const simpleOkexClient = new SimpleWebsocketClient(
           `${WS_REPLAY_URL}?exchange=okex&from=2019-06-01&to=2019-06-01T02:00Z`,
-          message => {
+          (message) => {
             messages.push(message as string)
           },
           () => {
@@ -305,12 +305,12 @@ describe('tardis-machine', () => {
 
     test(
       'subcribes to and replays historical BitMEX data feed of 1st of Jun 2019 (ADAM19 trades) using simple and official BitMEX clients',
-      async end => {
+      async (end) => {
         let trades: string[] = []
         let wsURL = `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-02`
         const simpleBitmexWSClient = new SimpleWebsocketClient(
           wsURL,
-          message => {
+          (message) => {
             const parsedMessage = JSON.parse(message)
             if (parsedMessage.action != 'insert') return
 
@@ -344,7 +344,7 @@ describe('tardis-machine', () => {
 
         const simpleBitmexWSClient = new SimpleWebsocketClient(
           `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-02`,
-          message => {
+          (message) => {
             messagesCount++
             lastBitmexMessage = message
           },
@@ -375,7 +375,7 @@ describe('tardis-machine', () => {
 
         const simpleBitmexWSClient = new SimpleWebsocketClient(
           `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-02`,
-          message => {
+          (message) => {
             lastBitmexMessage = message
             bitmexMessagesCount++
           },
@@ -389,7 +389,7 @@ describe('tardis-machine', () => {
 
         const simpleDeribitWSClient = new SimpleWebsocketClient(
           `${WS_REPLAY_URL}?exchange=deribit&from=2019-06-01&to=2019-06-02`,
-          message => {
+          (message) => {
             lastDeribitMessage = message
             deribitMessagesCount++
           },
@@ -421,9 +421,9 @@ describe('tardis-machine', () => {
         expect(new Date().getTime() - timestamp < 100).toBeTruthy
 
         console.log(
-          `WS received for BitMEX ${bitmexMessagesCount} messages, for Deribit ${deribitMessagesCount} messages in ${(new Date().getTime() -
-            startTimestamp) /
-            1000} seconds`
+          `WS received for BitMEX ${bitmexMessagesCount} messages, for Deribit ${deribitMessagesCount} messages in ${
+            (new Date().getTime() - startTimestamp) / 1000
+          } seconds`
         )
 
         expect(bitmexMessagesCount).toBe(7690673)
@@ -443,7 +443,7 @@ describe('tardis-machine', () => {
 
         const simpleBitmexWSClient = new SimpleWebsocketClient(
           `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-01T00:05Z&session=common`,
-          message => {
+          (message) => {
             bitmexMessages.push(message)
           },
           () => {
@@ -456,7 +456,7 @@ describe('tardis-machine', () => {
 
         const simpleDeribitWSClient = new SimpleWebsocketClient(
           `${WS_REPLAY_URL}?exchange=deribit&from=2019-06-01&to=2019-06-01T00:05Z&session=common`,
-          message => {
+          (message) => {
             deribitMessages.push(message)
           },
           () => {
@@ -498,7 +498,7 @@ describe('tardis-machine', () => {
         let messages: string[] = []
         const simpleBinanceClient = new SimpleWebsocketClient(
           `${WS_REPLAY_URL}?exchange=binance&from=2019-07-01&to=2019-07-01T00:05Z`,
-          message => {
+          (message) => {
             messages.push(message as string)
           },
           () => {
@@ -527,7 +527,7 @@ describe('tardis-machine', () => {
 
         let messages: string[] = []
 
-        const simpleWSClient = new SimpleWebsocketClient(`${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`, message => {
+        const simpleWSClient = new SimpleWebsocketClient(`${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`, (message) => {
           messages.push(message)
         })
 
@@ -550,9 +550,12 @@ describe('tardis-machine', () => {
 
           let messages: string[] = []
 
-          const simpleWSClient = new SimpleWebsocketClient(`${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`, message => {
-            messages.push(message)
-          })
+          const simpleWSClient = new SimpleWebsocketClient(
+            `${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`,
+            (message) => {
+              messages.push(message)
+            }
+          )
 
           await simpleWSClient.closed()
 
@@ -583,7 +586,7 @@ describe('tardis-machine', () => {
 
         let messages: string[] = []
 
-        const simpleWSClient = new SimpleWebsocketClient(`${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`, message => {
+        const simpleWSClient = new SimpleWebsocketClient(`${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`, (message) => {
           messages.push(message)
         })
 
@@ -598,7 +601,7 @@ describe('tardis-machine', () => {
   describe('WS /ws-stream-normalized', () => {
     test(
       'streams normalized real-time messages for each supported exchange as single consolidated stream',
-      async end => {
+      async (end) => {
         const exchangesWithDerivativeInfo = [
           'bitmex',
           'binance-futures',
@@ -611,7 +614,7 @@ describe('tardis-machine', () => {
         ]
 
         const options = await Promise.all(
-          EXCHANGES.filter(e => e !== 'binance-dex' && e !== 'coinflex').map(async exchange => {
+          EXCHANGES.filter((e) => e !== 'binance-dex' && e !== 'coinflex').map(async (exchange) => {
             const exchangeDetails = await getExchangeDetails(exchange)
             const dataTypes: any[] = ['trade', 'trade_bar_10ms', 'book_change', 'book_snapshot_3_0ms']
 
@@ -620,9 +623,9 @@ describe('tardis-machine', () => {
             }
 
             var symbols = exchangeDetails.availableSymbols
-              .filter(s => s.availableTo === undefined || new Date(s.availableTo).valueOf() > new Date().valueOf())
+              .filter((s) => s.availableTo === undefined || new Date(s.availableTo).valueOf() > new Date().valueOf())
               .slice(0, 2)
-              .map(s => s.id)
+              .map((s) => s.id)
 
             return {
               exchange,
@@ -636,7 +639,7 @@ describe('tardis-machine', () => {
 
         let count = 0
 
-        new SimpleWebsocketClient(`ws://localhost:${PORT + 1}/ws-stream-normalized?options=${serializeOptions(options)}`, message => {
+        new SimpleWebsocketClient(`ws://localhost:${PORT + 1}/ws-stream-normalized?options=${serializeOptions(options)}`, (message) => {
           JSON.parse(message)
           count++
           if (count > 20000) {
@@ -655,7 +658,7 @@ class SimpleWebsocketClient {
     this._socket = new WebSocket(url)
     this._socket.on('message', onMessageCB)
     this._socket.on('open', onOpen)
-    this._socket.on('error', err => {
+    this._socket.on('error', (err) => {
       console.log('SimpleWebsocketClient Error', err)
     })
   }
@@ -665,7 +668,7 @@ class SimpleWebsocketClient {
   }
 
   public async closed() {
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       this._socket.on('close', () => {
         resolve()
       })

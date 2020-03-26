@@ -1,4 +1,3 @@
-import { Transform, TransformCallback } from 'stream'
 import {
   ComputableFactory,
   computeBookSnapshots,
@@ -26,13 +25,13 @@ export type StreamNormalizedOptionsWithDataType = StreamNormalizedOptions<any, a
 export type StreamNormalizedRequestOptions = StreamNormalizedOptionsWithDataType | StreamNormalizedOptionsWithDataType[]
 
 export function* getNormalizers(dataTypes: string[]): IterableIterator<MapperFactory<any, any>> {
-  if (dataTypes.includes('trade') || dataTypes.some(dataType => dataType.startsWith('trade_bar_'))) {
+  if (dataTypes.includes('trade') || dataTypes.some((dataType) => dataType.startsWith('trade_bar_'))) {
     yield normalizeTrades
   }
   if (
     dataTypes.includes('book_change') ||
-    dataTypes.some(dataType => dataType.startsWith('book_snapshot_')) ||
-    dataTypes.some(dataType => dataType.startsWith('quote'))
+    dataTypes.some((dataType) => dataType.startsWith('book_snapshot_')) ||
+    dataTypes.some((dataType) => dataType.startsWith('quote'))
   ) {
     yield normalizeBookChanges
   }
@@ -43,7 +42,7 @@ export function* getNormalizers(dataTypes: string[]): IterableIterator<MapperFac
 }
 
 function getRequestedDataTypes(options: ReplayNormalizedOptionsWithDataType | StreamNormalizedOptionsWithDataType) {
-  return options.dataTypes.map(dataType => {
+  return options.dataTypes.map((dataType) => {
     if (dataType.startsWith('trade_bar_')) {
       return 'trade_bar'
     }
@@ -212,4 +211,4 @@ function parseAsQuoteComputable(dataType: string) {
   throw new Error(`invalid data type: ${dataType}`)
 }
 
-export const wait = (delayMS: number) => new Promise(resolve => setTimeout(resolve, delayMS))
+export const wait = (delayMS: number) => new Promise((resolve) => setTimeout(resolve, delayMS))

@@ -1,6 +1,6 @@
-import { combine, compute, streamNormalized } from 'tardis-dev'
 import qs from 'querystring'
-import { WebSocket, HttpRequest } from 'uWebSockets.js'
+import { combine, compute, streamNormalized } from 'tardis-dev'
+import { HttpRequest, WebSocket } from 'uWebSockets.js'
 import { debug } from '../debug'
 import { constructDataTypeFilter, getComputables, getNormalizers, StreamNormalizedRequestOptions, wait } from '../helpers'
 

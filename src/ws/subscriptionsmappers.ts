@@ -169,7 +169,7 @@ const bitflyerMapper: SubscriptionMapper = {
   map: (message: any) => {
     const availableChannels = ['lightning_board_snapshot', 'lightning_board', 'lightning_ticker', 'lightning_executions']
     const inputChannel = message.params.channel as string
-    const channel = availableChannels.find(c => inputChannel.startsWith(c))!
+    const channel = availableChannels.find((c) => inputChannel.startsWith(c))!
     const symbol = inputChannel.slice(channel.length + 1)
 
     return [
@@ -216,7 +216,7 @@ const binanceMapper: SubscriptionMapper = {
   },
 
   map: (message: any) => {
-    return (message.params as string[]).map(param => {
+    return (message.params as string[]).map((param) => {
       const lastSeparator = param.lastIndexOf('@')
       const firstSeparator = param.indexOf('@')
 
@@ -268,7 +268,7 @@ const bybitMapper: SubscriptionMapper = {
   },
 
   map: (message: any) => {
-    return (message.args as string[]).map(arg => {
+    return (message.args as string[]).map((arg) => {
       const pieces = arg.split('.')
 
       return {

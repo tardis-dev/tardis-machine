@@ -1,6 +1,6 @@
-import { combine, Exchange, replay, ReplayOptions } from 'tardis-dev'
 import qs from 'querystring'
-import { WebSocket, HttpRequest } from 'uWebSockets.js'
+import { combine, Exchange, replay, ReplayOptions } from 'tardis-dev'
+import { HttpRequest, WebSocket } from 'uWebSockets.js'
 import { debug } from '../debug'
 import { wait } from '../helpers'
 import { SubscriptionMapper, subscriptionsMappers } from './subscriptionsmappers'
@@ -78,7 +78,7 @@ class ReplaySession {
       debug('starting ReplaySession, %s', this._connections.join(', '))
       this._hasStarted = true
 
-      const connectionsWithoutSubscriptions = this._connections.filter(c => c.subscriptionsCount === 0)
+      const connectionsWithoutSubscriptions = this._connections.filter((c) => c.subscriptionsCount === 0)
       if (connectionsWithoutSubscriptions.length > 0) {
         throw new Error(`No subscriptions received for websocket connection ${connectionsWithoutSubscriptions[0]}`)
       }
@@ -105,7 +105,7 @@ class ReplaySession {
       } else {
         // map connections to replay messages streams enhanced with addtional ws field so
         // when we combine streams by localTimestamp we'll know which ws we should send given message via
-        const messagesWithConnections = this._connections.map(async function*(connection) {
+        const messagesWithConnections = this._connections.map(async function* (connection) {
           const messages = replay({
             ...connection.replayOptions,
             skipDecoding: true,
@@ -137,7 +137,7 @@ class ReplaySession {
       debug(
         'finished ReplaySession with %d connections, %s',
         this._connections.length,
-        this._connections.map(c => c.toString())
+        this._connections.map((c) => c.toString())
       )
     } catch (e) {
       debug('received error in ReplaySession, %o', e)

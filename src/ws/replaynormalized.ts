@@ -1,6 +1,6 @@
-import { combine, compute, replayNormalized } from 'tardis-dev'
 import qs from 'querystring'
-import { WebSocket, HttpRequest } from 'uWebSockets.js'
+import { combine, compute, replayNormalized } from 'tardis-dev'
+import { HttpRequest, WebSocket } from 'uWebSockets.js'
 import { debug } from '../debug'
 import { constructDataTypeFilter, getComputables, getNormalizers, ReplayNormalizedRequestOptions, wait } from '../helpers'
 
@@ -16,7 +16,7 @@ export async function replayNormalizedWS(ws: WebSocket, req: HttpRequest) {
 
     const options = Array.isArray(replayNormalizedOptions) ? replayNormalizedOptions : [replayNormalizedOptions]
 
-    const messagesIterables = options.map(option => {
+    const messagesIterables = options.map((option) => {
       // let's map from provided options to options and normalizers that needs to be added for dataTypes provided in options
       const messages = replayNormalized(option, ...getNormalizers(option.dataTypes))
       // separately check if any computables are needed for given dataTypes
