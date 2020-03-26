@@ -50,11 +50,16 @@ export class TardisMachine {
       },
 
       message: (ws: WebSocket, message: ArrayBuffer) => {
-        ws.onmessage(message)
+        if (ws.onmessage !== undefined) {
+          ws.onmessage(message)
+        }
       },
 
       close: (ws: WebSocket) => {
         ws.closed = true
+        if (ws.onclose !== undefined) {
+          ws.onclose()
+        }
       }
     })
   }
@@ -68,7 +73,7 @@ export class TardisMachine {
       try {
         this._httpServer.on('error', reject)
         this._httpServer.listen(port, () => {
-          this._wsServer.listen(port + 1, listenSocket => {
+          this._wsServer.listen(port + 1, (listenSocket) => {
             if (listenSocket) {
               resolve()
             } else {
@@ -84,7 +89,7 @@ export class TardisMachine {
 
   public async stop() {
     await new Promise((resolve, reject) => {
-      this._httpServer.close(err => {
+      this._httpServer.close((err) => {
         err ? reject(err) : resolve()
       })
     })
