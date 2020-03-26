@@ -23,8 +23,8 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
         {
           ...option,
           onError: (error) => {
-            debug('%s error: %o', option.exchange, error)
-          },
+            debug('WebSocket /ws-stream-normalized %s WS connection error: %o', option.exchange, error)
+          }
         },
         ...getNormalizers(option.dataTypes)
       )
