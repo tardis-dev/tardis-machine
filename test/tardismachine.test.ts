@@ -374,7 +374,7 @@ describe('tardis-machine', () => {
         let lastDeribitMessage
 
         const simpleBitmexWSClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-02`,
+          `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-02&session=common`,
           (message) => {
             lastBitmexMessage = message
             bitmexMessagesCount++
@@ -388,7 +388,7 @@ describe('tardis-machine', () => {
         )
 
         const simpleDeribitWSClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=deribit&from=2019-06-01&to=2019-06-02`,
+          `${WS_REPLAY_URL}?exchange=deribit&from=2019-06-01&to=2019-06-02&session=common`,
           (message) => {
             lastDeribitMessage = message
             deribitMessagesCount++
@@ -654,6 +654,7 @@ describe('tardis-machine', () => {
 
 class SimpleWebsocketClient {
   private readonly _socket: WebSocket
+  private isClosed = false
   constructor(url: string, onMessageCB: (message: string) => void, onOpen: () => void = () => {}) {
     this._socket = new WebSocket(url)
     this._socket.on('message', onMessageCB)
@@ -661,6 +662,7 @@ class SimpleWebsocketClient {
     this._socket.on('error', (err) => {
       console.log('SimpleWebsocketClient Error', err)
     })
+    this._socket.on('close', () => (this.isClosed = true))
   }
 
   public send(payload: any) {
@@ -668,10 +670,8 @@ class SimpleWebsocketClient {
   }
 
   public async closed() {
-    await new Promise((resolve) => {
-      this._socket.on('close', () => {
-        resolve()
-      })
-    })
+    while (!this.isClosed) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
   }
 }
