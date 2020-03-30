@@ -610,7 +610,8 @@ describe('tardis-machine', () => {
           'deribit',
           'okex-futures',
           'okex-swap',
-          'bybit'
+          'bybit',
+          'phemex'
         ]
 
         const options = await Promise.all(

@@ -325,6 +325,27 @@ const coinflexMapper: SubscriptionMapper = {
   }
 }
 
+const phemexMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.method !== undefined
+  },
+
+  map: (message: any) => {
+    const channelsMapping = {
+      'orderbook.subscribe': 'book',
+      'trade.subscribe': 'trades',
+      'market24h.subscribe': 'market24h'
+    } as any
+
+    return [
+      {
+        channel: channelsMapping[message.method],
+        symbols: message.params
+      }
+    ]
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -346,13 +367,15 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   'binance-dex': binanceDEXMapper,
   huobi: huobiMapper,
   'huobi-dm': huobiMapper,
+  'huobi-dm-swap': huobiMapper,
   bybit: bybitMapper,
   bitfinex: bitfinexMapper,
   'bitfinex-alts': bitfinexMapper,
   'bitfinex-derivatives': bitfinexMapper,
   okcoin: okexMapper,
   hitbtc: hitBtcMapper,
-  coinflex: coinflexMapper
+  coinflex: coinflexMapper,
+  phemex: phemexMapper
 }
 
 export type SubscriptionMapper = {
