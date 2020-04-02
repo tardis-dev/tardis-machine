@@ -74,6 +74,10 @@ export function constructDataTypeFilter(options: (ReplayNormalizedOptionsWithDat
 }
 
 const tradeBarSuffixToKindMap = {
+  ticks: {
+    kind: 'tick',
+    multiplier: 1
+  },
   ms: {
     kind: 'time',
     multiplier: 1
@@ -87,10 +91,6 @@ const tradeBarSuffixToKindMap = {
     multiplier: 60 * 1000
   },
 
-  ticks: {
-    kind: 'tick',
-    multiplier: 1
-  },
   vol: {
     kind: 'volume',
     multiplier: 1
