@@ -192,17 +192,21 @@ describe('tardis-machine', () => {
       1000 * 60 * 10
     )
 
-    test('unauthorizedAccess', async () => {
-      const options = {
-        exchange: 'bitmex',
-        from: '2019-05-02',
-        to: '2019-05-03'
-      }
+    test(
+      'unauthorizedAccess',
+      async () => {
+        const options = {
+          exchange: 'bitmex',
+          from: '2019-05-02',
+          to: '2019-05-03'
+        }
 
-      const response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions(options)}`)
+        const response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions(options)}`)
 
-      expect(response.status).toBe(401)
-    })
+        expect(response.status).toBe(401)
+      },
+      30 * 1000
+    )
   })
 
   describe('WS /ws-replay', () => {
