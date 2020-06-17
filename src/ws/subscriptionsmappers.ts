@@ -346,6 +346,22 @@ const phemexMapper: SubscriptionMapper = {
   }
 }
 
+const deltaMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.type === 'subscribe'
+  },
+
+  map: (message: any) => {
+    return message.payload.channels.map((channel: any) => {
+      return {
+        channel: channel.name,
+        symbols:
+          channel.symbols !== undefined && channel.name === 'mark_price' ? channel.symbols.map((s: any) => `MARK:${s}`) : channel.symbols
+      }
+    })
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -357,11 +373,13 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   'okex-swap': okexMapper,
   'okex-options': okexMapper,
   ftx: ftxMapper,
+  'ftx-us': ftxMapper,
   kraken: krakenMapper,
   bitflyer: bitflyerMapper,
   gemini: geminiMapper,
   binance: binanceMapper,
   'binance-futures': binanceMapper,
+  'binance-delivery': binanceMapper,
   'binance-jersey': binanceMapper,
   'binance-us': binanceMapper,
   'binance-dex': binanceDEXMapper,
@@ -375,7 +393,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   okcoin: okexMapper,
   hitbtc: hitBtcMapper,
   coinflex: coinflexMapper,
-  phemex: phemexMapper
+  phemex: phemexMapper,
+  delta: deltaMapper
 }
 
 export type SubscriptionMapper = {
