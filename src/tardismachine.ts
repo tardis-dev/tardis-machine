@@ -37,13 +37,22 @@ export class TardisMachine {
     } as any
 
     this._wsServer = App().ws('/*', {
-      open: (ws: WebSocket, req: HttpRequest) => {
-        const path = req.getUrl().toLocaleLowerCase()
+      upgrade: (res, req, context) => {
+        res.upgrade(
+          { req },
+          req.getHeader('sec-websocket-key'),
+          req.getHeader('sec-websocket-protocol'),
+          req.getHeader('sec-websocket-extensions'),
+          context
+        )
+      },
+      open: (ws: WebSocket) => {
+        const path = ws.req.getUrl().toLocaleLowerCase()
         ws.closed = false
         const matchingRoute = wsRoutes[path]
 
         if (matchingRoute !== undefined) {
-          matchingRoute(ws, req)
+          matchingRoute(ws, ws.req)
         } else {
           ws.end(1008)
         }
