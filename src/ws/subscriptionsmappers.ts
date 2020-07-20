@@ -362,6 +362,26 @@ const deltaMapper: SubscriptionMapper = {
   }
 }
 
+const gateIOMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.method !== undefined && message.method.endsWith('.subscribe')
+  },
+
+  map: (message: any) => {
+    return [
+      {
+        channel: message.method.split('.')[0],
+        symbols: message.params.map((s: any) => {
+          if (typeof s === 'string') {
+            return s
+          }
+          return s[0] as string
+        })
+      }
+    ]
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -394,7 +414,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   hitbtc: hitBtcMapper,
   coinflex: coinflexMapper,
   phemex: phemexMapper,
-  delta: deltaMapper
+  delta: deltaMapper,
+  'gate-io': gateIOMapper
 }
 
 export type SubscriptionMapper = {
