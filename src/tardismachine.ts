@@ -1,7 +1,7 @@
 import findMyWay from 'find-my-way'
 import http from 'http'
 import { clearCache, init } from 'tardis-dev'
-import { App, HttpRequest, TemplatedApp, WebSocket } from 'uWebSockets.js'
+import { App, TemplatedApp, WebSocket } from 'uWebSockets.js'
 import { replayHttp, replayNormalizedHttp } from './http'
 import { replayNormalizedWS, replayWS, streamNormalizedWS } from './ws'
 
