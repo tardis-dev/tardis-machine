@@ -307,19 +307,15 @@ const bitfinexMapper: SubscriptionMapper = {
 
 const coinflexMapper: SubscriptionMapper = {
   canHandle: (message: any) => {
-    return message.method === 'WatchOrders' || message.method === 'WatchTicker'
+    return message.op === 'subscribe'
   },
 
   map: (message: any) => {
-    const channelMappings = {
-      WatchOrders: ['OrderOpened', 'OrderModified', 'OrdersMatched', 'OrderClosed'],
-      WatchTicker: ['TickerChanged']
-    } as any
-
-    return channelMappings[message.method].map((channel: string) => {
+    return message.args.map((arg: string) => {
+      const split = arg.split(':')
       return {
-        channel,
-        symbols: [`${message.base}${message.counter}`]
+        channel: split[0],
+        symbols: [split[1]]
       }
     })
   }
