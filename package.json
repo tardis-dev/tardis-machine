@@ -16,7 +16,7 @@
     "test": "jest --runInBand --forceExit",
     "benchmark": "node ./benchmark.js",
     "prepare": "npm run build",
-    "release": "cross-var \"npm run build && git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish --access=public\""
+    "release": "cross-var \"npm run build && npm run test && git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish --access=public\""
   },
   "bin": {
     "tardis-machine": "./bin/tardis-machine.js"
@@ -57,28 +57,28 @@
   "dependencies": {
     "debug": "^4.1.1",
     "find-my-way": "^3.0.1",
-    "is-docker": "^2.0.0",
-    "tardis-dev": "^10.1.16",
+    "is-docker": "^2.1.0",
+    "tardis-dev": "^12.0.1",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v18.3.0",
-    "yargs": "^15.4.0"
+    "yargs": "^15.4.1"
   },
   "devDependencies": {
-    "@clusterws/cws": "^2.0.0",
+    "@clusterws/cws": "^3.0.0",
     "@types/debug": "^4.1.5",
-    "@types/jest": "^26.0.3",
-    "@types/node": "^14.0.14",
+    "@types/jest": "^26.0.8",
+    "@types/node": "^14.0.27",
     "@types/node-fetch": "^2.5.7",
     "@types/split2": "^2.1.6",
     "@types/yargs": "^15.0.5",
     "cross-var": "^1.1.0",
     "husky": "^4.2.5",
-    "jest": "^26.1.0",
+    "jest": "^26.2.2",
     "lint-staged": "^10.2.11",
     "node-fetch": "^2.6.0",
     "prettier": "^2.0.5",
     "split2": "^3.1.1",
-    "ts-jest": "^26.1.1",
-    "typescript": "^3.9.6"
+    "ts-jest": "^26.1.4",
+    "typescript": "^3.9.7"
   },
   "lint-staged": {
     "*.{ts}": [
