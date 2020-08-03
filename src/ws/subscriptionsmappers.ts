@@ -382,6 +382,41 @@ const gateIOMapper: SubscriptionMapper = {
   }
 }
 
+const gateIOFuturesMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.event === 'subscribe'
+  },
+
+  map: (message: any) => {
+    return [
+      {
+        channel: message.channel.split('.')[1],
+        symbols: message.payload.map((s: any) => {
+          if (typeof s === 'string') {
+            return s
+          }
+          return s[0] as string
+        })
+      }
+    ]
+  }
+}
+
+const poloniexMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.command === 'subscribe'
+  },
+
+  map: (message: any) => {
+    return [
+      {
+        channel: 'price_aggregated_book',
+        symbols: [message.channel]
+      }
+    ]
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -408,14 +443,15 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   'huobi-dm-swap': huobiMapper,
   bybit: bybitMapper,
   bitfinex: bitfinexMapper,
-  'bitfinex-alts': bitfinexMapper,
   'bitfinex-derivatives': bitfinexMapper,
   okcoin: okexMapper,
   hitbtc: hitBtcMapper,
   coinflex: coinflexMapper,
   phemex: phemexMapper,
   delta: deltaMapper,
-  'gate-io': gateIOMapper
+  'gate-io': gateIOMapper,
+  'gate-io-futures': gateIOFuturesMapper,
+  poloniex: poloniexMapper
 }
 
 export type SubscriptionMapper = {
