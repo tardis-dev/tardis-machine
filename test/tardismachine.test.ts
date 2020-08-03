@@ -615,7 +615,14 @@ describe('tardis-machine', () => {
           'okex-futures',
           'okex-swap',
           'bybit',
-          'phemex'
+          'phemex',
+          'ftx',
+          'delta',
+          'binance-delivery',
+          'huobi-dm',
+          'huobi-dm-swap',
+          'gate-io-futures',
+          'coinflex'
         ]
 
         const options = await Promise.all(
