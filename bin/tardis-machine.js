@@ -33,12 +33,6 @@ const argv = yargs
     describe: 'Port to bind server on',
     default: DEFAULT_PORT
   })
-
-  .option('port', {
-    type: 'number',
-    describe: 'Port to bind server on',
-    default: DEFAULT_PORT
-  })
   .option('cluster-mode', {
     type: 'boolean',
     describe: 'Run tardis-machine as cluster of Node.js processes',
