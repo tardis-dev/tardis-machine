@@ -7,6 +7,7 @@ import {
   normalizeBookChanges,
   NormalizedData,
   normalizeDerivativeTickers,
+  normalizeLiquidations,
   normalizeTrades,
   ReplayNormalizedOptions,
   StreamNormalizedOptions
@@ -38,6 +39,10 @@ export function* getNormalizers(dataTypes: string[]): IterableIterator<MapperFac
 
   if (dataTypes.includes('derivative_ticker')) {
     yield normalizeDerivativeTickers
+  }
+
+  if (dataTypes.includes('liquidation')) {
+    yield normalizeLiquidations
   }
 }
 
