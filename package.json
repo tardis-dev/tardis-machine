@@ -1,6 +1,6 @@
 {
   "name": "tardis-machine",
-  "version": "3.3.2",
+  "version": "3.3.3",
   "engines": {
     "node": ">=12"
   },
@@ -58,7 +58,7 @@
     "debug": "^4.2.0",
     "find-my-way": "^3.0.4",
     "is-docker": "^2.1.1",
-    "tardis-dev": "^12.4.0",
+    "tardis-dev": "^12.4.1",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v18.3.0",
     "yargs": "^16.0.3"
   },
