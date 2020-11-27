@@ -78,7 +78,7 @@ export class TardisMachine {
       await clearCache()
     }
 
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       try {
         this._httpServer.on('error', reject)
         this._httpServer.listen(port, () => {
@@ -97,7 +97,7 @@ export class TardisMachine {
   }
 
   public async stop() {
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       this._httpServer.close((err) => {
         err ? reject(err) : resolve()
       })

@@ -626,7 +626,7 @@ describe('tardis-machine', () => {
         ]
 
         const options = await Promise.all(
-          EXCHANGES.filter((e) => e !== 'binance-dex' && e !== 'coinflex').map(async (exchange) => {
+          EXCHANGES.filter((e) => e !== 'binance-jersey').map(async (exchange) => {
             const exchangeDetails = await getExchangeDetails(exchange)
             const dataTypes: any[] = ['trade', 'trade_bar_10ms', 'book_change', 'book_snapshot_3_0ms']
 
