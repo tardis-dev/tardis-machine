@@ -621,6 +621,7 @@ describe('tardis-machine', () => {
           'binance-delivery',
           'huobi-dm',
           'huobi-dm-swap',
+          'huobi-dm-linear-swap',
           'gate-io-futures',
           'coinflex'
         ]

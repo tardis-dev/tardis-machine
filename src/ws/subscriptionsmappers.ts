@@ -437,6 +437,7 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   huobi: huobiMapper,
   'huobi-dm': huobiMapper,
   'huobi-dm-swap': huobiMapper,
+  'huobi-dm-linear-swap': huobiMapper,
   bybit: bybitMapper,
   bitfinex: bitfinexMapper,
   'bitfinex-derivatives': bitfinexMapper,
