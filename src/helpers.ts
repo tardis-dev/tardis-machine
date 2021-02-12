@@ -9,6 +9,7 @@ import {
   normalizeDerivativeTickers,
   normalizeLiquidations,
   normalizeTrades,
+  normalizeOptionsSummary,
   ReplayNormalizedOptions,
   StreamNormalizedOptions
 } from 'tardis-dev'
@@ -43,6 +44,9 @@ export function* getNormalizers(dataTypes: string[]): IterableIterator<MapperFac
 
   if (dataTypes.includes('liquidation')) {
     yield normalizeLiquidations
+  }
+  if (dataTypes.includes('option_summary')) {
+    yield normalizeOptionsSummary
   }
 }
 
