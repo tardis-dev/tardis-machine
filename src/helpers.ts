@@ -167,22 +167,36 @@ function parseAsBookSnapshotComputable(dataType: string) {
     if (dataType.endsWith(suffix) === false) {
       continue
     }
-    const values = dataType.replace('book_snapshot_', '')
-    const depthString = values.slice(0, values.indexOf('_'))
-    const depth = Number(depthString)
+
+    const parts = dataType.split('_')
+
+    const depthString = parts[2]
+    const depth = Number(parts[2])
     if (depth === NaN) {
       throw new Error(`invalid depth: ${depthString}, data type: ${dataType}`)
     }
-
-    const intervalString = values.slice(values.indexOf('_') + 1).replace(suffix, '')
+    const intervalString = parts[parts.length - 1].replace(suffix, '')
 
     const interval = Number(intervalString)
     if (interval === NaN) {
       throw new Error(`invalid interval: ${intervalString}, data type: ${dataType}`)
     }
 
+    const isGrouped = parts.length === 5
+
+    let grouping
+    if (isGrouped) {
+      const groupingString = parts[3].replace('grouped', '')
+
+      grouping = Number(groupingString)
+      if (grouping === NaN) {
+        throw new Error(`invalid interval: ${groupingString}, data type: ${dataType}`)
+      }
+    }
+
     return computeBookSnapshots({
       interval: bookSnapshotsToIntervalMultiplierMap[suffix].multiplier * interval,
+      grouping,
       depth,
       name: dataType
     })
