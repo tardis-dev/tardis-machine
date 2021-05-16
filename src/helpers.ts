@@ -69,7 +69,12 @@ function getRequestedDataTypes(options: ReplayNormalizedOptionsWithDataType | St
 
 export function constructDataTypeFilter(options: (ReplayNormalizedOptionsWithDataType | StreamNormalizedOptionsWithDataType)[]) {
   const requestedDataTypesPerExchange = options.reduce((prev, current) => {
-    prev[current.exchange] = getRequestedDataTypes(current)
+    if (prev[current.exchange] !== undefined) {
+      prev[current.exchange] = [...prev[current.exchange], ...getRequestedDataTypes(current)]
+    } else {
+      prev[current.exchange] = getRequestedDataTypes(current)
+    }
+
     return prev
   }, {} as any)
 
