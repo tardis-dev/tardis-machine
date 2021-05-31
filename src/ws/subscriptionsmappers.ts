@@ -413,6 +413,86 @@ const poloniexMapper: SubscriptionMapper = {
   }
 }
 
+const ascendexMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.op === 'sub' || message.op === 'req'
+  },
+
+  map: (message: any) => {
+    const channel = message.action || message.ch.split(':')[0]
+    const symbol = (message.args && message.args.symbol) || message.ch.split(':')[1]
+    return [
+      {
+        channel,
+        symbols: symbol ? [symbol] : []
+      }
+    ]
+  }
+}
+
+const dydxMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.type === 'subscribe'
+  },
+
+  map: (message: any) => {
+    return [
+      {
+        channel: message.channel,
+        symbols: message.id ? [message.id] : []
+      }
+    ]
+  }
+}
+
+const upbitMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return Array.isArray(message)
+  },
+
+  map: (message: any) => {
+    return message
+      .filter((m: any) => {
+        return m.type !== undefined
+      })
+      .map((m: any) => {
+        return {
+          channel: m.type,
+          symbols: m.codes
+        }
+      })
+  }
+}
+
+const serumMaper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.op === 'subscribe'
+  },
+
+  map: (message: any) => {
+    const finalChannels: Filter<any>[] = []
+
+    const channelMappings = {
+      trades: ['recent_trades', 'trade'],
+      level1: ['quote'],
+      level2: ['l2snapshot', 'l2update'],
+      level3: ['l3snapshot', 'open', 'fill', 'change', 'done']
+    }
+
+    const symbols = message.markets
+    const mappedChannels = (channelMappings as any)[message.channel]
+
+    mappedChannels.forEach((channel: string) => {
+      finalChannels.push({
+        channel,
+        symbols
+      })
+    })
+
+    return finalChannels
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -448,7 +528,13 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   delta: deltaMapper,
   'gate-io': gateIOMapper,
   'gate-io-futures': gateIOFuturesMapper,
-  poloniex: poloniexMapper
+  poloniex: poloniexMapper,
+  ascendex: ascendexMapper,
+  dydx: dydxMapper,
+  'huobi-dm-options': huobiMapper,
+  'binance-options': binanceMapper,
+  upbit: upbitMapper,
+  serum: serumMaper
 }
 
 export type SubscriptionMapper = {
