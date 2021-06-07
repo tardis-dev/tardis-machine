@@ -240,3 +240,15 @@ function parseAsQuoteComputable(dataType: string) {
 }
 
 export const wait = (delayMS: number) => new Promise((resolve) => setTimeout(resolve, delayMS))
+
+const oldToISOString = Date.prototype.toISOString
+
+// if Date provides microseconds add those to ISO date
+Date.prototype.toISOString = function () {
+  if (this.μs !== undefined) {
+    const isoString = oldToISOString.apply(this)
+
+    return isoString.slice(0, isoString.length - 1) + this.μs.toString().padStart(3, '0') + 'Z'
+  }
+  return oldToISOString.apply(this)
+}
