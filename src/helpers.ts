@@ -78,8 +78,10 @@ export function constructDataTypeFilter(options: (ReplayNormalizedOptionsWithDat
     return prev
   }, {} as any)
 
+  const returnDisconnectMessages = options.some((o) => o.withDisconnectMessages)
+
   return (message: NormalizedData | Disconnect) => {
-    if (message.type === 'disconnect') {
+    if (message.type === 'disconnect' && returnDisconnectMessages) {
       return true
     }
 

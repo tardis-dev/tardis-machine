@@ -22,6 +22,7 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
       const messages = streamNormalized(
         {
           ...option,
+          withDisconnectMessages: true,
           onError: (error) => {
             debug('WebSocket /ws-stream-normalized %s WS connection error: %o', option.exchange, error)
           }
@@ -49,8 +50,14 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
       const success = ws.send(JSON.stringify(message))
       // handle backpressure in case of slow clients
       if (!success) {
+        let retries = 0
         while (ws.getBufferedAmount() > 0) {
-          await wait(1)
+          await wait(20)
+          retries += 1
+
+          if (retries > 2000) {
+            ws.end(1008, 'Too much backpressure')
+          }
         }
       }
     }
