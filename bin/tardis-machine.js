@@ -44,6 +44,10 @@ const argv = yargs
     describe: 'Enable debug logs.',
     default: false
   })
+  .option('proxy', {
+    type: 'string',
+    describe: 'The address of the proxy server to use for external connections'
+  })
 
   .help()
   .version()
@@ -66,7 +70,8 @@ async function start() {
   const machine = new TardisMachine({
     apiKey: argv['api-key'],
     cacheDir: argv['cache-dir'],
-    clearCache: argv['clear-cache']
+    clearCache: argv['clear-cache'],
+    proxy: argv['proxy'],
   })
   let suffix = ''
 

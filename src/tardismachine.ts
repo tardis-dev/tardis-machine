@@ -15,6 +15,7 @@ export class TardisMachine {
     init({
       apiKey: options.apiKey,
       cacheDir: options.cacheDir,
+      proxy: options.proxy,
       _userAgent: `tardis-machine/${pkg.version} (+https://github.com/tardis-dev/tardis-machine)`
     })
 
@@ -109,4 +110,5 @@ type Options = {
   apiKey?: string
   cacheDir: string
   clearCache?: boolean
+  proxy?: string
 }
