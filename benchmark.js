@@ -1,8 +1,8 @@
 const fetch = require('node-fetch')
 const split2 = require('split2')
-const { WebSocket } = require('@clusterws/cws')
+const WebSocket = require('ws')
 
-const serialize = options => {
+const serialize = (options) => {
   return encodeURIComponent(JSON.stringify(options))
 }
 
@@ -11,7 +11,7 @@ class SimpleWebsocketClient {
     this._socket = new WebSocket(url)
     this._socket.on('open', onOpen)
     this._socket.on('message', onMessageCB)
-    this._socket.on('error', err => {
+    this._socket.on('error', (err) => {
       console.log('SimpleWebsocketClient error', err)
     })
   }
@@ -21,7 +21,7 @@ class SimpleWebsocketClient {
   }
 
   async closed() {
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       this._socket.on('close', () => {
         resolve()
       })
@@ -121,7 +121,7 @@ async function wsReplayBenchmark({ JSONParseResponse }) {
   let startTime
   const simpleBitmexWSClient = new SimpleWebsocketClient(
     `ws://localhost:8001/ws-replay?exchange=${EXCHANGE}&from=${FROM_DATE}&to=${TO_DATE}`,
-    message => {
+    (message) => {
       if (!startTime) {
         startTime = new Date()
       }
@@ -167,7 +167,7 @@ async function wsReplayNormalizedBenchmark({ computeTBTBookSnapshots }) {
 
   const simpleBitmexWSClient = new SimpleWebsocketClient(
     `ws://localhost:8001/ws-replay-normalized?options=${serialize(options)}`,
-    message => {
+    (message) => {
       if (!startTime) {
         startTime = new Date()
       }

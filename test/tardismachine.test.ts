@@ -1,4 +1,4 @@
-import { WebSocket } from '@clusterws/cws'
+import WebSocket from 'ws'
 import fetch from 'node-fetch'
 import split2 from 'split2'
 import { EXCHANGES, FilterForExchange, getExchangeDetails } from 'tardis-dev'
@@ -309,7 +309,7 @@ describe('tardis-machine', () => {
 
     test(
       'subcribes to and replays historical BitMEX data feed of 1st of Jun 2019 (ADAM19 trades) using simple and official BitMEX clients',
-      async (end) => {
+      async () => {
         let trades: string[] = []
         let wsURL = `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-02`
         const simpleBitmexWSClient = new SimpleWebsocketClient(
@@ -334,7 +334,6 @@ describe('tardis-machine', () => {
 
         await simpleBitmexWSClient.closed()
         expect(trades).toMatchSnapshot('ADAM19Trades')
-        end()
       },
       10 * 60 * 1000
     )
@@ -605,7 +604,7 @@ describe('tardis-machine', () => {
   describe('WS /ws-stream-normalized', () => {
     test(
       'streams normalized real-time messages for each supported exchange as single consolidated stream',
-      async (end) => {
+      async () => {
         const exchangesWithDerivativeInfo = [
           'bitmex',
           'binance-futures',
@@ -653,12 +652,14 @@ describe('tardis-machine', () => {
 
         let count = 0
 
-        new SimpleWebsocketClient(`ws://localhost:${PORT + 1}/ws-stream-normalized?options=${serializeOptions(options)}`, (message) => {
-          JSON.parse(message)
-          count++
-          if (count > 20000) {
-            end()
-          }
+        await new Promise<void>((resolve) => {
+          new SimpleWebsocketClient(`ws://localhost:${PORT + 1}/ws-stream-normalized?options=${serializeOptions(options)}`, (message) => {
+            JSON.parse(message)
+            count++
+            if (count > 20000) {
+              resolve()
+            }
+          })
         })
       },
       1000 * 60 * 4
