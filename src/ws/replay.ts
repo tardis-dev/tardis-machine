@@ -139,7 +139,7 @@ class ReplaySession {
         this._connections.length,
         this._connections.map((c) => c.toString())
       )
-    } catch (e) {
+    } catch (e: any) {
       debug('received error in ReplaySession, %o', e)
       await this._closeAllConnections(e)
     } finally {

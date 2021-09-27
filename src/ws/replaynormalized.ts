@@ -60,7 +60,7 @@ export async function replayNormalizedWS(ws: WebSocket, req: HttpRequest) {
       replayNormalizedOptions,
       (endTimestamp - startTimestamp) / 1000
     )
-  } catch (e) {
+  } catch (e: any) {
     // this will underlying open WS connections
     if (messages !== undefined) {
       messages!.return!()

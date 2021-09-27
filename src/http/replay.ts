@@ -22,7 +22,7 @@ export const replayHttp = async (req: IncomingMessage, res: ServerResponse) => {
       (endTimestamp - startTimestamp) / 1000,
       streamedMessagesCount
     )
-  } catch (e) {
+  } catch (e: any) {
     const errorInfo = {
       responseText: e.responseText,
       message: e.message,

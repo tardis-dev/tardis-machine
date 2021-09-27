@@ -23,7 +23,7 @@ export const replayNormalizedHttp = async (req: IncomingMessage, res: ServerResp
       (endTimestamp - startTimestamp) / 1000,
       streamedMessagesCount
     )
-  } catch (e) {
+  } catch (e: any) {
     const errorInfo = {
       responseText: e.responseText,
       message: e.message,
