@@ -35,7 +35,7 @@ const coinbaseMaper: SubscriptionMapper = {
     const finalChannels: Filter<any>[] = []
 
     const channelMappings = {
-      full: ['received', 'open', 'done', 'match', 'change'],
+      full: ['received', 'open', 'done', 'match', 'change', 'full_snapshot'],
       level2: ['snapshot', 'l2update'],
       matches: ['match', 'last_match'],
       ticker: ['ticker']
