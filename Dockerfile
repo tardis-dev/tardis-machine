@@ -1,5 +1,4 @@
-# node v14 is required
-from node:14-slim
+from node:16-slim
 # version arg contains current git tag
 ARG VERSION_ARG
 # install git

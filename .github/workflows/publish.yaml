@@ -1,0 +1,64 @@
+name: Publish New Release To NPM And Image To Docker Hub
+
+on:
+  release:
+    # This specifies that the build will be triggered when we publish a release
+    types: [published]
+
+jobs:
+  publish:
+    name: Publish New Release To NPM And Image To Docker Hub
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: tardisdev/tardis-machine
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.release.target_commitish }}
+
+      - name: Use Node.js v16
+        uses: actions/setup-node@v1
+        with:
+          node-version: 16.x
+          registry-url: https://registry.npmjs.org/
+
+      - name: Install Dependencies And Compile TS
+        run: npm install
+
+      - name: Configure Git
+        run: git config --global user.name "GitHub Release Bot"
+
+      - name: Update package version
+        run: npm version ${{ github.event.release.tag_name }}
+
+      - name: Run Tests
+        run: npm run test
+
+      - name: Publish Package
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Push Version Changes To GitHub
+        run: git push
+        env:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker Image
+        run: docker build --build-arg VERSION_ARG="${{ github.event.release.tag_name }}" -t ${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name }} .
+
+      - name: Login To Docker Hub
+        run: echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+
+      - name: Tag Docker Image as Latest
+        run: docker tag ${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name }} ${{ env.IMAGE_NAME }}:latest
+
+      - name: Push Image to Docker Hub
+        run: docker push ${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name }} && docker push ${{ env.IMAGE_NAME }}:latest
+
+      - name: Logout From Docker Hub
+        run: docker logout
+        if: ${{ always() }}
+        continue-on-error: true

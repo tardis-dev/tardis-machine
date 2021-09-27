@@ -13,10 +13,10 @@
   "scripts": {
     "build": "tsc",
     "precommit": "lint-staged",
-    "test": "jest --runInBand --forceExit",
-    "benchmark": "node ./benchmark.js",
+    "test": "npm run build && jest --forceExit --runInBand",
     "prepare": "npm run build",
-    "release": "cross-var \"npm run build && npm run test && git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish --access=public\""
+    "format": "prettier --write .",
+    "check-format": "prettier --check ."
   },
   "bin": {
     "tardis-machine": "./bin/tardis-machine.js"
@@ -63,11 +63,10 @@
     "yargs": "^17.2.1"
   },
   "devDependencies": {
-    "@clusterws/cws": "^3.0.0",
     "@types/debug": "^4.1.7",
     "@types/jest": "^27.0.2",
     "@types/node": "^16.10.1",
-    "@types/node-fetch": "^3.0.2",
+    "@types/node-fetch": "^2.5.12",
     "@types/split2": "^3.2.1",
     "@types/yargs": "^17.0.3",
     "cross-var": "^1.1.0",

@@ -1,3 +1,0 @@
-#!/usr/bin/env sh
-echo "Building :$DOCKER_TAG, with VERSION_ARG=\"$DOCKER_TAG\""
-docker build --build-arg VERSION_ARG="$DOCKER_TAG" -t ${IMAGE_NAME} .

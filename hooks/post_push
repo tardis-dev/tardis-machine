@@ -1,5 +1,0 @@
-#!/bin/bash
-
-echo "Post push for $DOCKER_REPO, image $IMAGE_NAME"
-docker tag $IMAGE_NAME $DOCKER_REPO:latest
-docker push $DOCKER_REPO:latest
