@@ -11,7 +11,8 @@ import {
   normalizeTrades,
   normalizeOptionsSummary,
   ReplayNormalizedOptions,
-  StreamNormalizedOptions
+  StreamNormalizedOptions,
+  normalizeBookTickers
 } from 'tardis-dev'
 
 export type WithDataType = {
@@ -47,6 +48,10 @@ export function* getNormalizers(dataTypes: string[]): IterableIterator<MapperFac
   }
   if (dataTypes.includes('option_summary')) {
     yield normalizeOptionsSummary
+  }
+
+  if (dataTypes.includes('book_ticker')) {
+    yield normalizeBookTickers
   }
 }
 

@@ -534,7 +534,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   'huobi-dm-options': huobiMapper,
   'binance-options': binanceMapper,
   upbit: upbitMapper,
-  serum: serumMaper
+  serum: serumMaper,
+  'star-atlas': serumMaper
 }
 
 export type SubscriptionMapper = {
