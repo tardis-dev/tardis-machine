@@ -41,7 +41,7 @@ describe('tardis-machine', () => {
 
         expect(response.status).toBe(200)
 
-        const messagesStream = response.body.pipe(split2()) // split response body by new lines
+        const messagesStream = response.body!.pipe(split2()) // split response body by new lines
 
         const messages = []
         for await (let line of messagesStream) {
@@ -69,7 +69,7 @@ describe('tardis-machine', () => {
 
           expect(response.status).toBe(200)
 
-          const messagesStream = response.body.pipe(split2()) // split response body by new lines
+          const messagesStream = response.body!.pipe(split2()) // split response body by new lines
 
           const messages = []
           for await (let line of messagesStream) {
@@ -107,7 +107,7 @@ describe('tardis-machine', () => {
 
         expect(response.status).toBe(200)
 
-        const messagesStream = response.body.pipe(split2()) // split response body by new lines
+        const messagesStream = response.body!.pipe(split2()) // split response body by new lines
 
         const messages = []
         for await (let line of messagesStream) {
@@ -169,7 +169,7 @@ describe('tardis-machine', () => {
 
         expect(response.status).toBe(200)
 
-        const ethTradeMessages = response.body.pipe(split2()) // split response body by new lines
+        const ethTradeMessages = response.body!.pipe(split2()) // split response body by new lines
 
         let receivedTradesCount = 0
         let receivedOrderBookUpdatesCount = 0
