@@ -626,7 +626,7 @@ describe('tardis-machine', () => {
         ]
 
         const options = await Promise.all(
-          EXCHANGES.filter((e) => e !== 'binance-jersey').map(async (exchange) => {
+          EXCHANGES.filter((e) => e !== 'binance-jersey' && e !== 'huobi-dm-options' && e !== 'star-atlas').map(async (exchange) => {
             const exchangeDetails = await getExchangeDetails(exchange)
             const dataTypes: any[] = ['trade', 'trade_bar_10ms', 'book_change', 'book_snapshot_3_0ms']
 
@@ -672,7 +672,9 @@ class SimpleWebsocketClient {
   private isClosed = false
   constructor(url: string, onMessageCB: (message: string) => void, onOpen: () => void = () => {}) {
     this._socket = new WebSocket(url)
-    this._socket.on('message', onMessageCB)
+    this._socket.on('message', function (message: Buffer) {
+      onMessageCB(message.toString())
+    })
     this._socket.on('open', onOpen)
     this._socket.on('error', (err) => {
       console.log('SimpleWebsocketClient Error', err)

@@ -1,7 +1,7 @@
 import findMyWay from 'find-my-way'
 import http from 'http'
 import { clearCache, init } from 'tardis-dev'
-import { App, TemplatedApp, WebSocket } from 'uWebSockets.js'
+import { App, DISABLED, TemplatedApp, WebSocket } from 'uWebSockets.js'
 import { replayHttp, replayNormalizedHttp } from './http'
 import { replayNormalizedWS, replayWS, streamNormalizedWS } from './ws'
 
@@ -37,7 +37,12 @@ export class TardisMachine {
     } as any
 
     this._wsServer = App().ws('/*', {
-      upgrade: (res, req, context) => {
+      compression: DISABLED,
+      maxPayloadLength: 512 * 1024,
+      idleTimeout: 24 * 60 * 60,
+      maxBackpressure: 5 * 1024 * 1024,
+      closeOnBackpressureLimit: true,
+      upgrade: (res: any, req: any, context: any) => {
         res.upgrade(
           { req },
           req.getHeader('sec-websocket-key'),
@@ -70,7 +75,7 @@ export class TardisMachine {
           ws.onclose()
         }
       }
-    })
+    } as any)
   }
 
   public async start(port: number) {
