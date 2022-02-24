@@ -210,7 +210,8 @@ function parseAsBookSnapshotComputable(dataType: string) {
       interval: bookSnapshotsToIntervalMultiplierMap[suffix].multiplier * interval,
       grouping,
       depth,
-      name: dataType
+      name: dataType,
+      removeCrossedLevels: true
     })
   }
 
@@ -222,7 +223,8 @@ function parseAsQuoteComputable(dataType: string) {
     return computeBookSnapshots({
       interval: 0,
       depth: 1,
-      name: dataType
+      name: dataType,
+      removeCrossedLevels: true
     })
   }
 
@@ -239,7 +241,8 @@ function parseAsQuoteComputable(dataType: string) {
     return computeBookSnapshots({
       interval: bookSnapshotsToIntervalMultiplierMap[suffix].multiplier * interval,
       depth: 1,
-      name: dataType
+      name: dataType,
+      removeCrossedLevels: true
     })
   }
 
