@@ -1,5 +1,5 @@
 import qs from 'querystring'
-import { combine, compute, streamNormalized } from 'tardis-dev'
+import { combine, compute, Exchange, streamNormalized } from 'tardis-dev'
 import { HttpRequest, WebSocket } from 'uWebSockets.js'
 import { debug } from '../debug'
 import { constructDataTypeFilter, getComputables, getNormalizers, StreamNormalizedRequestOptions, wait } from '../helpers'
@@ -16,6 +16,7 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
     debug('WebSocket /ws-stream-normalized started, options: %o', streamNormalizedOptions)
 
     const options = Array.isArray(streamNormalizedOptions) ? streamNormalizedOptions : [streamNormalizedOptions]
+    let subSequentErrorsCount: { [key in Exchange]?: number } = {}
 
     const messagesIterables = options.map((option) => {
       // let's map from provided options to options and normalizers that needs to be added for dataTypes provided in options
@@ -24,7 +25,14 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
           ...option,
           withDisconnectMessages: true,
           onError: (error) => {
-            debug('WebSocket /ws-stream-normalized %s WS connection error: %o', option.exchange, error)
+            const exchange = option.exchange as Exchange
+            if (subSequentErrorsCount[exchange] === undefined) {
+              subSequentErrorsCount[exchange] = 0
+            }
+
+            subSequentErrorsCount[exchange]!++
+
+            debug('WebSocket /ws-stream-normalized %s WS connection error: %o', exchange, error)
           }
         },
         ...getNormalizers(option.dataTypes)
@@ -43,6 +51,17 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
     messages = messagesIterables.length === 1 ? messagesIterables[0] : combine(...messagesIterables)
 
     for await (const message of messages) {
+      if (ws.closed) {
+        return
+      }
+
+      const exchange = message.exchange as Exchange
+
+      if (subSequentErrorsCount[exchange] !== undefined && subSequentErrorsCount[exchange]! >= 50) {
+        ws.end(1011, `Too many subsequent errors when connecting to  ${exchange} WS API`)
+        return
+      }
+
       if (!filterByDataType(message)) {
         continue
       }
@@ -57,8 +76,13 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
 
           if (retries > 2000) {
             ws.end(1008, 'Too much backpressure')
+            return
           }
         }
+      }
+
+      if (message.type !== 'disconnect') {
+        subSequentErrorsCount[exchange] = 0
       }
     }
 
@@ -76,16 +100,16 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
       (endTimestamp - startTimestamp) / 1000
     )
   } catch (e: any) {
-    // this will underlying open WS connections
-    if (messages !== undefined) {
-      messages!.return!()
-    }
-
     if (!ws.closed) {
       ws.end(1011, e.toString())
     }
 
     debug('WebSocket /ws-stream-normalized  error: %o', e)
     console.error('WebSocket /ws-stream-normalized error:', e)
+  } finally {
+    // this will close underlying open WS connections
+    if (messages !== undefined) {
+      messages!.return!()
+    }
   }
 }
