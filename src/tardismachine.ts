@@ -1,9 +1,12 @@
 import findMyWay from 'find-my-way'
 import http from 'http'
+import events from 'events'
 import { clearCache, init } from 'tardis-dev'
 import { App, DISABLED, TemplatedApp, WebSocket } from 'uWebSockets.js'
 import { replayHttp, replayNormalizedHttp } from './http'
 import { replayNormalizedWS, replayWS, streamNormalizedWS } from './ws'
+
+events.defaultMaxListeners = 1000
 
 const pkg = require('../package.json')
 
