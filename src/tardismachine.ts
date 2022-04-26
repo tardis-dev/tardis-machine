@@ -2,7 +2,7 @@ import findMyWay from 'find-my-way'
 import http from 'http'
 import { clearCache, init } from 'tardis-dev'
 import { App, DISABLED, TemplatedApp, WebSocket } from 'uWebSockets.js'
-import { replayHttp, replayNormalizedHttp } from './http'
+import { replayHttp, replayNormalizedHttp, healthCheck } from './http'
 import { replayNormalizedWS, replayWS, streamNormalizedWS } from './ws'
 
 const pkg = require('../package.json')
@@ -29,6 +29,7 @@ export class TardisMachine {
 
     router.on('GET', '/replay', replayHttp)
     router.on('GET', '/replay-normalized', replayNormalizedHttp)
+    router.on('GET', '/health-check', healthCheck)
 
     const wsRoutes = {
       '/ws-replay': replayWS,
