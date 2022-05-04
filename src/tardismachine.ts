@@ -40,7 +40,7 @@ export class TardisMachine {
     this._wsServer = App().ws('/*', {
       compression: DISABLED,
       maxPayloadLength: 512 * 1024,
-      idleTimeout: 24 * 60 * 60,
+      idleTimeout: 60,
       maxBackpressure: 5 * 1024 * 1024,
       closeOnBackpressureLimit: true,
       upgrade: (res: any, req: any, context: any) => {
