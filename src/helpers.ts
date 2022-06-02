@@ -23,7 +23,7 @@ export type ReplayNormalizedOptionsWithDataType = ReplayNormalizedOptions<any, a
 
 export type ReplayNormalizedRequestOptions = ReplayNormalizedOptionsWithDataType | ReplayNormalizedOptionsWithDataType[]
 
-export type StreamNormalizedOptionsWithDataType = StreamNormalizedOptions<any, any> & WithDataType
+export type StreamNormalizedOptionsWithDataType = StreamNormalizedOptions<any, any> & WithDataType & { withErrorMessages?: boolean }
 
 export type StreamNormalizedRequestOptions = StreamNormalizedOptionsWithDataType | StreamNormalizedOptionsWithDataType[]
 

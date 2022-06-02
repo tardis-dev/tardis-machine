@@ -32,6 +32,17 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
 
             subSequentErrorsCount[exchange]!++
 
+            if (option.withErrorMessages && !ws.closed) {
+              ws.send(
+                JSON.stringify({
+                  type: 'error',
+                  exchange,
+                  localTimestamp: new Date(),
+                  details: error.message
+                })
+              )
+            }
+
             debug('WebSocket /ws-stream-normalized %s WS connection error: %o', exchange, error)
           }
         },
