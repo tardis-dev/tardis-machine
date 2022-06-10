@@ -18,6 +18,9 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
     const options = Array.isArray(streamNormalizedOptions) ? streamNormalizedOptions : [streamNormalizedOptions]
     let subSequentErrorsCount: { [key in Exchange]?: number } = {}
 
+    let retries = 0
+    let bufferedAmount = 0
+
     const messagesIterables = options.map((option) => {
       // let's map from provided options to options and normalizers that needs to be added for dataTypes provided in options
       const messages = streamNormalized(
@@ -77,20 +80,23 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
         continue
       }
 
-      const success = ws.send(JSON.stringify(message))
+      retries = 0
+      bufferedAmount = 0
       // handle backpressure in case of slow clients
-      if (!success) {
-        let retries = 0
-        while (ws.getBufferedAmount() > 0) {
-          await wait(20)
-          retries += 1
+      while ((bufferedAmount = ws.getBufferedAmount()) > 0) {
+        retries += 1
+        await wait(10 * retries)
 
-          if (retries > 2000) {
-            ws.end(1008, 'Too much backpressure')
-            return
-          }
+        if (retries % 20 === 0 || retries === 5) {
+          debug('Slow client, waiting %d ms, buffered amount: %d', 10 * retries, bufferedAmount)
+        }
+        if (retries > 100) {
+          ws.end(1008, 'Too much backpressure')
+          return
         }
       }
+
+      ws.send(JSON.stringify(message))
 
       if (message.type !== 'disconnect') {
         subSequentErrorsCount[exchange] = 0

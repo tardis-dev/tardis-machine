@@ -4,12 +4,14 @@ import { clearCache, init } from 'tardis-dev'
 import { App, DISABLED, TemplatedApp, WebSocket } from 'uWebSockets.js'
 import { replayHttp, replayNormalizedHttp, healthCheck } from './http'
 import { replayNormalizedWS, replayWS, streamNormalizedWS } from './ws'
+import { debug } from './debug'
 
 const pkg = require('../package.json')
 
 export class TardisMachine {
   private readonly _httpServer: http.Server
   private readonly _wsServer: TemplatedApp
+  private _eventLoopTimerId: NodeJS.Timer | undefined = undefined
 
   constructor(private readonly options: Options) {
     init({
@@ -80,6 +82,23 @@ export class TardisMachine {
   }
 
   public async start(port: number) {
+    let start = process.hrtime()
+    const interval = 500
+
+    // based on https://github.com/tj/node-blocked/blob/master/index.js
+    this._eventLoopTimerId = setInterval(() => {
+      const delta = process.hrtime(start)
+      const nanosec = delta[0] * 1e9 + delta[1]
+      const ms = nanosec / 1e6
+      const n = ms - interval
+
+      if (n > 2000) {
+        debug('Tardis-machine server event loop blocked for %d ms.', Math.round(n))
+      }
+
+      start = process.hrtime()
+    }, interval)
+
     if (this.options.clearCache) {
       await clearCache()
     }
@@ -108,6 +127,10 @@ export class TardisMachine {
         err ? reject(err) : resolve()
       })
     })
+
+    if (this._eventLoopTimerId !== undefined) {
+      clearInterval(this._eventLoopTimerId)
+    }
   }
 }
 
