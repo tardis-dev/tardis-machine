@@ -535,7 +535,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   'binance-options': binanceMapper,
   upbit: upbitMapper,
   serum: serumMaper,
-  'star-atlas': serumMaper
+  'star-atlas': serumMaper,
+  mango: serumMaper
 }
 
 export type SubscriptionMapper = {
