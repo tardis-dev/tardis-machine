@@ -279,6 +279,21 @@ const bybitMapper: SubscriptionMapper = {
   }
 }
 
+const bybitSpotMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.event === 'sub'
+  },
+
+  map: (message: any) => {
+    return [
+      {
+        channel: message.topic,
+        symbols: [message.symbol]
+      }
+    ]
+  }
+}
+
 // https://api.hitbtc.com/#subscribe-to-trades
 const hitBtcMapper: SubscriptionMapper = {
   canHandle: (message: any) => {
@@ -536,7 +551,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   upbit: upbitMapper,
   serum: serumMaper,
   'star-atlas': serumMaper,
-  mango: serumMaper
+  mango: serumMaper,
+  'bybit-spot': bybitSpotMapper
 }
 
 export type SubscriptionMapper = {
