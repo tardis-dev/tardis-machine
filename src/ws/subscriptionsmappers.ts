@@ -508,6 +508,22 @@ const serumMaper: SubscriptionMapper = {
   }
 }
 
+const cryptoComMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.method === 'subscribe'
+  },
+
+  map: (message: any) => {
+    return message.params.channels.map((channel: string) => {
+      const parts = channel.split('.')
+      return {
+        channel: parts[1],
+        symbols: [parts[0]]
+      }
+    })
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -552,7 +568,9 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   serum: serumMaper,
   'star-atlas': serumMaper,
   mango: serumMaper,
-  'bybit-spot': bybitSpotMapper
+  'bybit-spot': bybitSpotMapper,
+  'crypto-com': cryptoComMapper,
+  'crypto-com-derivatives': cryptoComMapper
 }
 
 export type SubscriptionMapper = {
