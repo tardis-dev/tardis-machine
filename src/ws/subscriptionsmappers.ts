@@ -524,6 +524,25 @@ const cryptoComMapper: SubscriptionMapper = {
   }
 }
 
+const kucoinMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.type === 'subscribe'
+  },
+
+  map: (message: any) => {
+    //  "topic": "/market/ticker:BTC-USDT,ETH-USDT",
+    const parts = message.topic.split(':') as string[]
+    const symbols = parts[1].split(',')
+
+    return [
+      {
+        channel: parts[0].substring(1),
+        symbols
+      }
+    ]
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -570,7 +589,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   mango: serumMaper,
   'bybit-spot': bybitSpotMapper,
   'crypto-com': cryptoComMapper,
-  'crypto-com-derivatives': cryptoComMapper
+  'crypto-com-derivatives': cryptoComMapper,
+  kucoin: kucoinMapper
 }
 
 export type SubscriptionMapper = {
