@@ -46,7 +46,7 @@ async function writeMessagesToResponse(res: OutgoingMessage, replayOptions: Repl
   const BATCH_SIZE = 32
 
   // not 100% sure that's necessary since we're returning ndjson in fact, not json
-  res.setHeader('Content-Type', 'application/json')
+  res.setHeader('Content-Type', 'application/x-json-stream')
 
   let buffers: Buffer[] = []
   let totalMessagesCount = 0

@@ -43,7 +43,7 @@ export const replayNormalizedHttp = async (req: IncomingMessage, res: ServerResp
 async function writeMessagesToResponse(res: OutgoingMessage, options: ReplayNormalizedRequestOptions) {
   const BATCH_SIZE = 32
 
-  res.setHeader('Content-Type', 'application/json')
+  res.setHeader('Content-Type', 'application/x-json-stream')
 
   let buffers: string[] = []
   let totalMessagesCount = 0
