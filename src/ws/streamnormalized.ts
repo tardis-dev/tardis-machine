@@ -41,7 +41,8 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
                   type: 'error',
                   exchange,
                   localTimestamp: new Date(),
-                  details: error.message
+                  details: error.message,
+                  subSequentErrorsCount: subSequentErrorsCount[exchange]
                 })
               )
             }

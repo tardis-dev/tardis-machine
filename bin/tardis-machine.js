@@ -57,7 +57,7 @@ const port = process.env.PORT ? +process.env.PORT : argv['port']
 const enableDebug = argv['debug']
 
 if (enableDebug) {
-  process.env.DEBUG = 'tardis-dev:machine*'
+  process.env.DEBUG = 'tardis-dev:machine*,tardis-dev:realtime*'
 }
 
 const { TardisMachine } = require('../dist')
