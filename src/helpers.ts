@@ -160,7 +160,7 @@ function parseAsTradeBarComputable(dataType: string) {
 
     const intervalString = dataType.replace('trade_bar_', '').replace(suffix, '')
     const interval = Number(intervalString)
-    if (interval === NaN) {
+    if (Number.isNaN(interval)) {
       throw new Error(`invalid interval: ${intervalString}, data type: ${dataType}`)
     }
 
@@ -184,13 +184,13 @@ function parseAsBookSnapshotComputable(dataType: string) {
 
     const depthString = parts[2]
     const depth = Number(parts[2])
-    if (depth === NaN) {
+    if (Number.isNaN(depth)) {
       throw new Error(`invalid depth: ${depthString}, data type: ${dataType}`)
     }
     const intervalString = parts[parts.length - 1].replace(suffix, '')
 
     const interval = Number(intervalString)
-    if (interval === NaN) {
+    if (Number.isNaN(interval)) {
       throw new Error(`invalid interval: ${intervalString}, data type: ${dataType}`)
     }
 
@@ -201,7 +201,7 @@ function parseAsBookSnapshotComputable(dataType: string) {
       const groupingString = parts[3].replace('grouped', '')
 
       grouping = Number(groupingString)
-      if (grouping === NaN) {
+      if (Number.isNaN(grouping)) {
         throw new Error(`invalid interval: ${groupingString}, data type: ${dataType}`)
       }
     }
@@ -234,7 +234,7 @@ function parseAsQuoteComputable(dataType: string) {
     }
     const intervalString = dataType.replace('quote_', '').replace(suffix, '')
     const interval = Number(intervalString)
-    if (interval === NaN) {
+    if (Number.isNaN(interval)) {
       throw new Error(`invalid interval: ${intervalString}, data type: ${dataType}`)
     }
 
