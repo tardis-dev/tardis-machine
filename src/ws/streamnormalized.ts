@@ -86,15 +86,19 @@ export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
       // handle backpressure in case of slow clients
       while ((bufferedAmount = ws.getBufferedAmount()) > 0) {
         retries += 1
-        await wait(10 * retries)
+        const isState = new Date().valueOf() - message.localTimestamp.valueOf() >= 6
 
-        if (retries % 20 === 0 || retries === 5) {
-          debug('Slow client, waiting %d ms, buffered amount: %d', 10 * retries, bufferedAmount)
+        // log stale messages, stale meaning message was not sent in 6 ms or more (2 retries)
+
+        if (isState) {
+          debug('Slow client, waiting %d ms, buffered amount: %d', 3 * retries, bufferedAmount)
         }
-        if (retries > 100) {
+        if (retries > 300) {
           ws.end(1008, 'Too much backpressure')
           return
         }
+
+        await wait(3 * retries)
       }
 
       ws.send(JSON.stringify(message))
