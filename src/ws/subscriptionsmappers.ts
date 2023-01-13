@@ -543,6 +543,38 @@ const kucoinMapper: SubscriptionMapper = {
   }
 }
 
+const bitnomialMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.type === 'subscribe'
+  },
+
+  map: (message: any) => {
+    const topLevelSymbols = message.product_codes
+    const finalChannels: Filter<any>[] = []
+
+    const channelMappings = {
+      book: ['book', 'levels'],
+      trade: ['trade'],
+      block: ['block']
+    }
+
+    message.channels.forEach((channel: any) => {
+      const channelName = typeof channel == 'string' ? channel : channel.name
+      const symbols = typeof channel == 'string' ? topLevelSymbols : channel.product_codes
+      const mappedChannels = (channelMappings as any)[channelName]
+
+      mappedChannels.forEach((channel: string) => {
+        finalChannels.push({
+          channel,
+          symbols
+        })
+      })
+    })
+
+    return finalChannels
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -590,7 +622,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   'bybit-spot': bybitSpotMapper,
   'crypto-com': cryptoComMapper,
   'crypto-com-derivatives': cryptoComMapper,
-  kucoin: kucoinMapper
+  kucoin: kucoinMapper,
+  bitnomial: bitnomialMapper
 }
 
 export type SubscriptionMapper = {
