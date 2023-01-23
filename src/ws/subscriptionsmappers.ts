@@ -65,6 +65,7 @@ const deribitMapper: SubscriptionMapper = {
   },
 
   map: (message: any) => {
+    console.log(message)
     return message.params.channels.map((channel: string) => {
       const lastSeparator = channel.lastIndexOf('.')
       const firstSeparator = channel.indexOf('.')
@@ -575,6 +576,22 @@ const bitnomialMapper: SubscriptionMapper = {
   }
 }
 
+const wooxMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.event === 'subscribe'
+  },
+
+  map: (message: any) => {
+    const [symbol, channel] = message.topic.split('@')
+    return [
+      {
+        channel,
+        symbols: symbol
+      }
+    ]
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -623,7 +640,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   'crypto-com': cryptoComMapper,
   'crypto-com-derivatives': cryptoComMapper,
   kucoin: kucoinMapper,
-  bitnomial: bitnomialMapper
+  bitnomial: bitnomialMapper,
+  'woo-x': wooxMapper
 }
 
 export type SubscriptionMapper = {
