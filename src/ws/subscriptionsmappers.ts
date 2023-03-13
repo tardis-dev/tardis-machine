@@ -255,8 +255,8 @@ const huobiMapper: SubscriptionMapper = {
     const pieces = message.sub.split('.')
     return [
       {
-        channel: pieces[1],
-        symbols: [pieces[2]]
+        channel: pieces[2],
+        symbols: [pieces[1]]
       }
     ]
   }
@@ -289,6 +289,21 @@ const bybitSpotMapper: SubscriptionMapper = {
     return [
       {
         channel: message.topic,
+        symbols: [message.symbol]
+      }
+    ]
+  }
+}
+
+const blockchainComMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.action === 'subscribe'
+  },
+
+  map: (message: any) => {
+    return [
+      {
+        channel: message.channel,
         symbols: [message.symbol]
       }
     ]
@@ -641,7 +656,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   'crypto-com-derivatives': cryptoComMapper,
   kucoin: kucoinMapper,
   bitnomial: bitnomialMapper,
-  'woo-x': wooxMapper
+  'woo-x': wooxMapper,
+  'blockchain-com': blockchainComMapper
 }
 
 export type SubscriptionMapper = {
