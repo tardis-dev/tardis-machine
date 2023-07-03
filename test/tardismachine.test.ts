@@ -626,28 +626,30 @@ describe('tardis-machine', () => {
         ]
 
         const options = await Promise.all(
-          EXCHANGES.filter((e) => e !== 'binance-jersey' && e !== 'huobi-dm-options' && e !== 'star-atlas').map(async (exchange) => {
-            const exchangeDetails = await getExchangeDetails(exchange)
-            const dataTypes: any[] = ['trade', 'trade_bar_10ms', 'book_change', 'book_snapshot_3_0ms']
+          EXCHANGES.filter((e) => e !== 'binance-jersey' && e !== 'huobi-dm-options' && e !== 'star-atlas' && e !== 'ascendex').map(
+            async (exchange) => {
+              const exchangeDetails = await getExchangeDetails(exchange)
+              const dataTypes: any[] = ['trade', 'trade_bar_10ms', 'book_change', 'book_snapshot_3_0ms']
 
-            if (exchangesWithDerivativeInfo.includes(exchange)) {
-              dataTypes.push('derivative_ticker')
+              if (exchangesWithDerivativeInfo.includes(exchange)) {
+                dataTypes.push('derivative_ticker')
+              }
+
+              var symbols = exchangeDetails.availableSymbols
+                .filter((s) => s.id !== undefined)
+                .filter((s) => s.availableTo === undefined || new Date(s.availableTo).valueOf() > new Date().valueOf())
+                .slice(0, 2)
+                .map((s) => s.id)
+
+              return {
+                exchange,
+                symbols,
+                withDisconnectMessages: true,
+                timeoutIntervalMS: 30 * 1000,
+                dataTypes: dataTypes
+              }
             }
-
-            var symbols = exchangeDetails.availableSymbols
-              .filter((s) => s.id !== undefined)
-              .filter((s) => s.availableTo === undefined || new Date(s.availableTo).valueOf() > new Date().valueOf())
-              .slice(0, 2)
-              .map((s) => s.id)
-
-            return {
-              exchange,
-              symbols,
-              withDisconnectMessages: true,
-              timeoutIntervalMS: 30 * 1000,
-              dataTypes: dataTypes
-            }
-          })
+          )
         )
 
         let count = 0
