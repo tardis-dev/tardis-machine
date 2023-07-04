@@ -65,7 +65,6 @@ const deribitMapper: SubscriptionMapper = {
   },
 
   map: (message: any) => {
-    console.log(message)
     return message.params.channels.map((channel: string) => {
       const lastSeparator = channel.lastIndexOf('.')
       const firstSeparator = channel.indexOf('.')
