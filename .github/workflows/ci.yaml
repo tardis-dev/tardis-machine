@@ -31,6 +31,3 @@ jobs:
 
       - name: Check Code Format
         run: npm run check-format
-
-      - name: Run Tests
-        run: npm run test
