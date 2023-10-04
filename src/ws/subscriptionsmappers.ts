@@ -657,7 +657,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitnomial: bitnomialMapper,
   'woo-x': wooxMapper,
   'blockchain-com': blockchainComMapper,
-  'bybit-options': bybitMapper
+  'bybit-options': bybitMapper,
+  'binance-european-options': binanceMapper
 }
 
 export type SubscriptionMapper = {
