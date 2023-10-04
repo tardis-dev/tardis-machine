@@ -11,7 +11,7 @@ const pkg = require('../package.json')
 export class TardisMachine {
   private readonly _httpServer: http.Server
   private readonly _wsServer: TemplatedApp
-  private _eventLoopTimerId: NodeJS.Timer | undefined = undefined
+  private _eventLoopTimerId: number | undefined = undefined
 
   constructor(private readonly options: Options) {
     init({
