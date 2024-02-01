@@ -43,6 +43,7 @@ async function writeMessagesToResponse(res: OutgoingMessage, replayOptions: Repl
   const responsePrefixBuffer = Buffer.from('{"localTimestamp":"')
   const responseMiddleBuffer = Buffer.from('","message":')
   const responseSuffixBuffer = Buffer.from('}\n')
+  const newLineBuffer = Buffer.from('\n')
   const BATCH_SIZE = 32
 
   // not 100% sure that's necessary since we're returning ndjson in fact, not json
@@ -59,7 +60,7 @@ async function writeMessagesToResponse(res: OutgoingMessage, replayOptions: Repl
     if (messageWithTimestamp === undefined) {
       // if received message is undefined  (disconnect)
       // return it as new line
-      res.write('\n')
+      buffers.push(newLineBuffer)
     } else {
       // instead of writing each message directly to response,
       // let's batch them and send in BATCH_SIZE  batches (each message is 5 buffers: prefix etc)
@@ -72,7 +73,7 @@ async function writeMessagesToResponse(res: OutgoingMessage, replayOptions: Repl
         responseSuffixBuffer
       )
 
-      if (buffers.length == BATCH_SIZE * 5) {
+      if (buffers.length >= BATCH_SIZE * 5) {
         const ok = res.write(Buffer.concat(buffers))
         buffers = []
 
