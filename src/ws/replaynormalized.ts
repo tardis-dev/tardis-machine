@@ -4,7 +4,7 @@ import { HttpRequest, WebSocket } from 'uWebSockets.js'
 import { debug } from '../debug'
 import { constructDataTypeFilter, getComputables, getNormalizers, ReplayNormalizedRequestOptions, wait } from '../helpers'
 
-export async function replayNormalizedWS(ws: WebSocket, req: HttpRequest) {
+export async function replayNormalizedWS(ws: any, req: HttpRequest) {
   let messages: AsyncIterableIterator<any> | undefined
   try {
     const startTimestamp = new Date().getTime()

@@ -8,7 +8,7 @@ import { SubscriptionMapper, subscriptionsMappers } from './subscriptionsmappers
 const replaySessions: { [sessionKey: string]: ReplaySession | undefined } = {}
 let sessionsCounter = 0
 
-export function replayWS(ws: WebSocket, req: HttpRequest) {
+export function replayWS(ws: any, req: HttpRequest) {
   const parsedQuery = qs.decode(req.getQuery())
   const from = parsedQuery['from'] as string
   const to = parsedQuery['to'] as string
@@ -173,7 +173,7 @@ class WebsocketConnection {
   private readonly _subscriptionsMapper: SubscriptionMapper
   public subscriptionsCount = 0
 
-  constructor(public readonly ws: WebSocket, exchange: Exchange, from: string, to: string) {
+  constructor(public readonly ws: any, exchange: Exchange, from: string, to: string) {
     this.replayOptions = {
       exchange,
       from,

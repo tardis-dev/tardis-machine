@@ -4,7 +4,7 @@ import { HttpRequest, WebSocket } from 'uWebSockets.js'
 import { debug } from '../debug'
 import { constructDataTypeFilter, getComputables, getNormalizers, StreamNormalizedRequestOptions, wait } from '../helpers'
 
-export async function streamNormalizedWS(ws: WebSocket, req: HttpRequest) {
+export async function streamNormalizedWS(ws: any, req: HttpRequest) {
   let messages: AsyncIterableIterator<any> | undefined
 
   try {

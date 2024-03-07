@@ -54,7 +54,7 @@ export class TardisMachine {
           context
         )
       },
-      open: (ws: WebSocket) => {
+      open: (ws: any) => {
         const path = ws.req.getUrl().toLocaleLowerCase()
         ws.closed = false
         const matchingRoute = wsRoutes[path]
@@ -66,13 +66,13 @@ export class TardisMachine {
         }
       },
 
-      message: (ws: WebSocket, message: ArrayBuffer) => {
+      message: (ws: any, message: ArrayBuffer) => {
         if (ws.onmessage !== undefined) {
           ws.onmessage(message)
         }
       },
 
-      close: (ws: WebSocket) => {
+      close: (ws: any) => {
         ws.closed = true
         if (ws.onclose !== undefined) {
           ws.onclose()
