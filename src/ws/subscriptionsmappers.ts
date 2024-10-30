@@ -644,6 +644,7 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   poloniex: poloniexMapper,
   ascendex: ascendexMapper,
   dydx: dydxMapper,
+  'dydx-v4': dydxMapper,
   'huobi-dm-options': huobiMapper,
   'binance-options': binanceMapper,
   upbit: upbitMapper,
