@@ -606,6 +606,21 @@ const wooxMapper: SubscriptionMapper = {
   }
 }
 
+const bitgetMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.op === 'subscribe'
+  },
+
+  map: (message: any) => {
+    return message.args.map((arg: any) => {
+      return {
+        channel: arg.channel,
+        symbols: [arg.instId]
+      }
+    })
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -661,7 +676,9 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   'bybit-options': bybitMapper,
   'binance-european-options': binanceMapper,
   'okex-spreads': okexMapper,
-  'kucoin-futures': kucoinMapper
+  'kucoin-futures': kucoinMapper,
+  bitget: bitgetMapper,
+  'bitget-futures': bitgetMapper
 }
 
 export type SubscriptionMapper = {
