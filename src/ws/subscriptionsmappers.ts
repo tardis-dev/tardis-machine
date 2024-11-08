@@ -620,6 +620,20 @@ const bitgetMapper: SubscriptionMapper = {
     })
   }
 }
+const coinbaseInternationalMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.type === 'SUBSCRIBE'
+  },
+
+  map: (message: any) => {
+    return message.channels.map((channel: string) => {
+      return {
+        channel,
+        symbols: message.product_ids
+      }
+    })
+  }
+}
 
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
@@ -678,7 +692,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   'okex-spreads': okexMapper,
   'kucoin-futures': kucoinMapper,
   bitget: bitgetMapper,
-  'bitget-futures': bitgetMapper
+  'bitget-futures': bitgetMapper,
+  'coinbase-international': coinbaseInternationalMapper
 }
 
 export type SubscriptionMapper = {
