@@ -212,9 +212,9 @@ class WebsocketConnection {
     try {
       const messageDeserialized = JSON.parse(message)
 
-      if (this._subscriptionsMapper.canHandle(messageDeserialized)) {
+      if (this._subscriptionsMapper.canHandle(messageDeserialized, new Date(this.replayOptions.from))) {
         // if there is a subscribe message let's map it to filters and add those to replay options
-        const filters = this._subscriptionsMapper.map(messageDeserialized)
+        const filters = this._subscriptionsMapper.map(messageDeserialized, new Date(this.replayOptions.from))
         debug('Received subscribe websocket message: %s, mapped filters: %o', message, filters)
         this.replayOptions.filters.push(...filters)
         this.subscriptionsCount++

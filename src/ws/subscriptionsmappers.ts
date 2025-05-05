@@ -262,6 +262,8 @@ const huobiMapper: SubscriptionMapper = {
 }
 
 // https://github.com/bybit-exchange/bybit-official-api-docs/blob/master/en/websocket.md
+const BYBIT_V5_API_SWITCH_DATE = new Date('2023-04-05T00:00:00.000Z')
+
 const bybitMapper: SubscriptionMapper = {
   canHandle: (message: any) => {
     return message.op === 'subscribe'
@@ -280,11 +282,24 @@ const bybitMapper: SubscriptionMapper = {
 }
 
 const bybitSpotMapper: SubscriptionMapper = {
-  canHandle: (message: any) => {
+  canHandle: (message: any, date: Date) => {
+    if (date.valueOf() > BYBIT_V5_API_SWITCH_DATE.valueOf()) {
+      return message.op === 'subscribe'
+    }
     return message.event === 'sub'
   },
 
-  map: (message: any) => {
+  map: (message: any, date: Date) => {
+    if (date.valueOf() > BYBIT_V5_API_SWITCH_DATE.valueOf()) {
+      return (message.args as string[]).map((arg) => {
+        const pieces = arg.split('.')
+        return {
+          channel: pieces[0],
+          symbols: [pieces[pieces.length - 1]]
+        }
+      })
+    }
+
     return [
       {
         channel: message.topic,
@@ -713,6 +728,6 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
 }
 
 export type SubscriptionMapper = {
-  canHandle: (message: object) => boolean
-  map: (message: object) => Filter<string>[]
+  canHandle: (message: object, date: Date) => boolean
+  map: (message: object, date: Date) => Filter<string>[]
 }
