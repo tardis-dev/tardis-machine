@@ -26,7 +26,7 @@ describe('tardis-machine', () => {
   })
 
   describe('HTTP GET /replay-normalized', () => {
-    test(
+    ;(test(
       'replays Bitmex ETHUSD trades and order book changes',
       async () => {
         const options = {
@@ -81,7 +81,7 @@ describe('tardis-machine', () => {
           expect(messages).toMatchSnapshot()
         },
         1000 * 60 * 10
-      )
+      ))
 
     test(
       'replays Bitmex XBTUSD and Deribit BTC-PERPETUAL trade 1 second bars',
@@ -517,7 +517,7 @@ describe('tardis-machine', () => {
   })
 
   describe('WS /ws-replay-normalized', () => {
-    test(
+    ;(test(
       'replays Bitmex ETHUSD trades and order book changes',
       async () => {
         const options = {
@@ -565,7 +565,7 @@ describe('tardis-machine', () => {
           expect(messages).toMatchSnapshot()
         },
         1000 * 60 * 10
-      )
+      ))
 
     test(
       'replays Bitmex XBTUSD and Deribit BTC-PERPETUAL trade 1 second bars',

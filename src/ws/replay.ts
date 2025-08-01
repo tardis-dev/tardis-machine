@@ -173,7 +173,12 @@ class WebsocketConnection {
   private readonly _subscriptionsMapper: SubscriptionMapper
   public subscriptionsCount = 0
 
-  constructor(public readonly ws: any, exchange: Exchange, from: string, to: string) {
+  constructor(
+    public readonly ws: any,
+    exchange: Exchange,
+    from: string,
+    to: string
+  ) {
     this.replayOptions = {
       exchange,
       from,
