@@ -13,7 +13,7 @@
   "scripts": {
     "build": "tsc",
     "precommit": "lint-staged",
-    "test": "npm run build && jest --forceExit --runInBand",
+    "test": "export UWS_HTTP_MAX_HEADERS_SIZE=20000 && npm run build && jest --forceExit --runInBand",
     "prepare": "npm run build",
     "format": "prettier --write .",
     "check-format": "prettier --check .",

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-
+process.env.UWS_HTTP_MAX_HEADERS_SIZE = '20000'
 const yargs = require('yargs')
 const os = require('os')
 const path = require('path')
