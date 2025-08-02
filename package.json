@@ -1,6 +1,6 @@
 {
   "name": "tardis-machine",
-  "version": "3.35.5",
+  "version": "4.0.0",
   "engines": {
     "node": ">=22"
   },
