@@ -59,7 +59,7 @@
     "debug": "^4.4.1",
     "find-my-way": "^9.3.0",
     "is-docker": "^2.2.1",
-    "tardis-dev": "^14.1.1",
+    "tardis-dev": "^14.2.0",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.52.0",
     "yargs": "^17.5.1"
   },
