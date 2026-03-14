@@ -1,4 +1,4 @@
-from node:22-slim
+from node:24-slim
 # version arg contains current git tag
 ARG VERSION_ARG
 # install git

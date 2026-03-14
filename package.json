@@ -2,7 +2,7 @@
   "name": "tardis-machine",
   "version": "4.0.2",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "description": "Locally runnable server with built-in data caching, providing both tick-level historical and consolidated real-time cryptocurrency market data via HTTP and WebSocket APIs",
   "main": "dist/index.js",
@@ -59,8 +59,8 @@
     "debug": "^4.4.1",
     "find-my-way": "^9.3.0",
     "is-docker": "^2.2.1",
-    "tardis-dev": "^14.2.0",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.52.0",
+    "tardis-dev": "^14.2.1",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.59.0",
     "yargs": "^17.5.1"
   },
   "devDependencies": {
