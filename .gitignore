@@ -6,3 +6,4 @@ package-lock.json
 *.tsbuildinfo
 bench
 .cache
+.DS_Store
