@@ -1,16 +1,15 @@
 import { once } from 'node:events'
 import type { IncomingMessage, OutgoingMessage, ServerResponse } from 'node:http'
 import { combine, compute, replayNormalized } from 'tardis-dev'
-import { parse } from 'node:url'
 import { debug } from '../debug.ts'
 import { constructDataTypeFilter, getComputables, getNormalizers, ReplayNormalizedRequestOptions } from '../helpers.ts'
 
 export const replayNormalizedHttp = async (req: IncomingMessage, res: ServerResponse) => {
   try {
     const startTimestamp = new Date().getTime()
-    const parsedQuery = parse(req.url!, true).query
-    const optionsString = parsedQuery['options'] as string
-    const replayNormalizedOptions = JSON.parse(optionsString) as ReplayNormalizedRequestOptions
+    const requestUrl = new URL(req.url!, 'http://localhost')
+    const optionsString = requestUrl.searchParams.get('options') ?? undefined
+    const replayNormalizedOptions = JSON.parse(optionsString as string) as ReplayNormalizedRequestOptions
 
     debug('GET /replay-normalized request started, options: %o', replayNormalizedOptions)
 
