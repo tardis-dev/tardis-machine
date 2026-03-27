@@ -1,3 +1,6 @@
+import { createRequire } from 'node:module'
+
+const require = createRequire(import.meta.url)
 const fetch = require('node-fetch')
 const split2 = require('split2')
 const WebSocket = require('ws')

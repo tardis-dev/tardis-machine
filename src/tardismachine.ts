@@ -1,12 +1,14 @@
 import findMyWay from 'find-my-way'
-import http from 'http'
+import http from 'node:http'
+import { createRequire } from 'module'
 import { clearCache, init } from 'tardis-dev'
-import { App, DISABLED, TemplatedApp, WebSocket } from 'uWebSockets.js'
-import { replayHttp, replayNormalizedHttp, healthCheck } from './http'
-import { replayNormalizedWS, replayWS, streamNormalizedWS } from './ws'
-import { debug } from './debug'
+import { App, DISABLED, TemplatedApp } from 'uWebSockets.js'
+import { healthCheck, replayHttp, replayNormalizedHttp } from './http/index.ts'
+import { replayNormalizedWS, replayWS, streamNormalizedWS } from './ws/index.ts'
+import { debug } from './debug.ts'
 
-const pkg = require('../package.json')
+const require = createRequire(import.meta.url)
+const packageJson = require('../package.json') as { version: string }
 
 export class TardisMachine {
   private readonly _httpServer: http.Server
@@ -17,7 +19,7 @@ export class TardisMachine {
     init({
       apiKey: options.apiKey,
       cacheDir: options.cacheDir,
-      _userAgent: `tardis-machine/${pkg.version} (+https://github.com/tardis-dev/tardis-machine)`
+      _userAgent: `tardis-machine/${packageJson.version} (+https://github.com/tardis-dev/tardis-machine)`
     })
 
     const router = findMyWay({ ignoreTrailingSlash: true })

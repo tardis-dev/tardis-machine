@@ -1,8 +1,8 @@
 import WebSocket from 'ws'
 import fetch from 'node-fetch'
 import split2 from 'split2'
-import { EXCHANGES, FilterForExchange, getExchangeDetails } from 'tardis-dev'
-import { TardisMachine } from '../src'
+import { EXCHANGES, type FilterForExchange, getExchangeDetails } from 'tardis-dev'
+import { TardisMachine } from '../dist/index.js'
 
 const PORT = 8072
 const HTTP_REPLAY_DATA_FEEDS_URL = `http://localhost:${PORT}/replay`

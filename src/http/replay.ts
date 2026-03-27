@@ -1,13 +1,13 @@
-import { once } from 'events'
-import { IncomingMessage, OutgoingMessage, ServerResponse } from 'http'
+import { once } from 'node:events'
+import type { IncomingMessage, OutgoingMessage, ServerResponse } from 'node:http'
 import { replay, ReplayOptions } from 'tardis-dev'
-import url from 'url'
-import { debug } from '../debug'
+import { parse } from 'node:url'
+import { debug } from '../debug.ts'
 
 export const replayHttp = async (req: IncomingMessage, res: ServerResponse) => {
   try {
     const startTimestamp = new Date().getTime()
-    const parsedQuery = url.parse(req.url!, true).query
+    const parsedQuery = parse(req.url!, true).query
     const optionsString = parsedQuery['options'] as string
     const replayOptions = JSON.parse(optionsString) as ReplayOptions<any, any, any>
 

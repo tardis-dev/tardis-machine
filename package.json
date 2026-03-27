@@ -1,19 +1,28 @@
 {
   "name": "tardis-machine",
-  "version": "14.2.2",
+  "version": "15.0.0",
   "engines": {
     "node": ">=24"
   },
   "description": "Locally runnable server with built-in data caching, providing both tick-level historical and consolidated real-time cryptocurrency market data via HTTP and WebSocket APIs",
   "main": "dist/index.js",
-  "source": "src/index.js",
+  "source": "src/index.ts",
   "types": "dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "repository": "tardis-dev/tardis-machine",
   "homepage": "https://github.com/tardis-dev/tardis-machine",
   "scripts": {
     "build": "tsc",
     "precommit": "lint-staged",
-    "test": "export UWS_HTTP_MAX_HEADERS_SIZE=20000 && npm run build && jest --forceExit --runInBand",
+    "test": "npm run build && node --experimental-vm-modules ./node_modules/jest/bin/jest.js --forceExit --runInBand",
     "prepare": "npm run build",
     "format": "prettier --write .",
     "check-format": "prettier --check .",
@@ -59,7 +68,7 @@
     "debug": "^4.4.1",
     "find-my-way": "^9.3.0",
     "is-docker": "^2.2.1",
-    "tardis-dev": "^14.3.0",
+    "tardis-dev": "^15.1.0",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.59.0",
     "yargs": "^17.5.1"
   },
@@ -89,8 +98,20 @@
     ]
   },
   "jest": {
+    "extensionsToTreatAsEsm": [
+      ".ts"
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
     "transform": {
-      "\\.(ts|tsx)?$": "ts-jest"
+      "\\.(ts|tsx)?$": [
+        "ts-jest",
+        {
+          "useESM": true,
+          "tsconfig": "./test/tsconfig.json"
+        }
+      ]
     },
     "testEnvironment": "node"
   }

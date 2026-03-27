@@ -1,3 +1,3 @@
-export * from './replay'
-export * from './replaynormalized'
-export * from './healthCheck'
+export * from './replay.ts'
+export * from './replaynormalized.ts'
+export * from './healthCheck.ts'

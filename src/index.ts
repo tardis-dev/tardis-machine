@@ -1,1 +1,1 @@
-export { TardisMachine } from './tardismachine'
+export { TardisMachine } from './tardismachine.ts'

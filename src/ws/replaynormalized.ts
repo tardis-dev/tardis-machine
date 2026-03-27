@@ -1,14 +1,14 @@
-import qs from 'querystring'
+import { decode } from 'node:querystring'
 import { combine, compute, replayNormalized } from 'tardis-dev'
-import { HttpRequest, WebSocket } from 'uWebSockets.js'
-import { debug } from '../debug'
-import { constructDataTypeFilter, getComputables, getNormalizers, ReplayNormalizedRequestOptions, wait } from '../helpers'
+import type { HttpRequest } from 'uWebSockets.js'
+import { debug } from '../debug.ts'
+import { constructDataTypeFilter, getComputables, getNormalizers, ReplayNormalizedRequestOptions, wait } from '../helpers.ts'
 
 export async function replayNormalizedWS(ws: any, req: HttpRequest) {
   let messages: AsyncIterableIterator<any> | undefined
   try {
     const startTimestamp = new Date().getTime()
-    const parsedQuery = qs.decode(req.getQuery())
+    const parsedQuery = decode(req.getQuery())
     const optionsString = parsedQuery['options'] as string
     const replayNormalizedOptions = JSON.parse(optionsString) as ReplayNormalizedRequestOptions
 

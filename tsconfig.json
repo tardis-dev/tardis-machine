@@ -1,14 +1,15 @@
 {
-  "include": ["src", "tests"],
+  "include": ["src"],
   "compilerOptions": {
     "rootDir": "src",
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "target": "esnext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rewriteRelativeImportExtensions": true,
+    "target": "ESNext",
     "pretty": true,
     "strict": true,
     "outDir": "dist",
@@ -17,6 +18,6 @@
     "noUnusedParameters": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["es2017", "dom"]
+    "lib": ["ESNext", "DOM"]
   }
 }

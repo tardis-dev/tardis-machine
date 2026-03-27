@@ -1,15 +1,15 @@
-import qs from 'querystring'
+import { decode } from 'node:querystring'
 import { combine, Exchange, replay, ReplayOptions } from 'tardis-dev'
-import { HttpRequest, WebSocket } from 'uWebSockets.js'
-import { debug } from '../debug'
-import { wait } from '../helpers'
-import { SubscriptionMapper, subscriptionsMappers } from './subscriptionsmappers'
+import type { HttpRequest } from 'uWebSockets.js'
+import { debug } from '../debug.ts'
+import { wait } from '../helpers.ts'
+import { SubscriptionMapper, subscriptionsMappers } from './subscriptionsmappers.ts'
 
 const replaySessions: { [sessionKey: string]: ReplaySession | undefined } = {}
 let sessionsCounter = 0
 
 export function replayWS(ws: any, req: HttpRequest) {
-  const parsedQuery = qs.decode(req.getQuery())
+  const parsedQuery = decode(req.getQuery())
   const from = parsedQuery['from'] as string
   const to = parsedQuery['to'] as string
   const exchange = parsedQuery['exchange'] as Exchange

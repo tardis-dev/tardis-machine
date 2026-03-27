@@ -1,4 +1,4 @@
-import { IncomingMessage, ServerResponse } from 'http'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 const BYTES_IN_MB = 1024 * 1024
 
 export const healthCheck = (_: IncomingMessage, res: ServerResponse) => {

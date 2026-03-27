@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 process.env.UWS_HTTP_MAX_HEADERS_SIZE = '20000'
+import { createRequire } from 'node:module'
+
+const require = createRequire(import.meta.url)
 const yargs = require('yargs')
-const os = require('os')
-const path = require('path')
-const cluster = require('cluster')
-const numCPUs = require('os').cpus().length
+const os = require('node:os')
+const path = require('node:path')
+const cluster = require('node:cluster')
+const numCPUs = os.cpus().length
 const isDocker = require('is-docker')
 const pkg = require('../package.json')
+const { TardisMachine } = await import('../dist/index.js')
 
 const DEFAULT_PORT = 8000
 const argv = yargs
@@ -60,8 +64,6 @@ if (enableDebug) {
   process.env.DEBUG = 'tardis-dev:machine*,tardis-dev:realtime*'
 }
 
-const { TardisMachine } = require('../dist')
-
 async function start() {
   const machine = new TardisMachine({
     apiKey: argv['api-key'],
@@ -75,7 +77,7 @@ async function start() {
     cluster.schedulingPolicy = cluster.SCHED_RR
 
     suffix = '(cluster mode)'
-    if (cluster.isMaster) {
+    if (cluster.isPrimary) {
       for (let i = 0; i < numCPUs; i++) {
         cluster.fork()
       }
@@ -86,7 +88,7 @@ async function start() {
     await machine.start(port)
   }
 
-  if (!cluster.isMaster) {
+  if (!cluster.isPrimary) {
     return
   }
 

@@ -1,3 +1,3 @@
-export * from './replay'
-export * from './replaynormalized'
-export * from './streamnormalized'
+export * from './replay.ts'
+export * from './replaynormalized.ts'
+export * from './streamnormalized.ts'
