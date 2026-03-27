@@ -624,10 +624,25 @@ describe('tardis-machine', () => {
           'gate-io-futures',
           'coinflex'
         ]
+        const excludedExchanges = new Set([
+          'binance-dex',
+          'binance-jersey',
+          'coinbase-international',
+          'coinflex',
+          'dydx',
+          'ftx',
+          'ftx-us',
+          'huobi-dm-options',
+          'mango',
+          'okex-spreads',
+          'okcoin',
+          'serum',
+          'star-atlas'
+        ])
 
-        const options = await Promise.all(
-          EXCHANGES.filter((e) => e !== 'binance-jersey' && e !== 'huobi-dm-options' && e !== 'star-atlas' && e !== 'ascendex').map(
-            async (exchange) => {
+        const options = (
+          await Promise.all(
+            EXCHANGES.filter((exchange) => excludedExchanges.has(exchange) === false).map(async (exchange) => {
               const exchangeDetails = await getExchangeDetails(exchange)
               const dataTypes: any[] = ['trade', 'trade_bar_10ms', 'book_change', 'book_snapshot_3_0ms']
 
@@ -645,23 +660,94 @@ describe('tardis-machine', () => {
                 exchange,
                 symbols,
                 withDisconnectMessages: true,
+                withErrorMessages: true,
                 timeoutIntervalMS: 30 * 1000,
                 dataTypes: dataTypes
               }
-            }
+            })
           )
-        )
+        ).filter((option) => option.symbols.length > 0)
 
         let count = 0
+        const countsByExchange: Record<string, number> = {}
+        const errorCountsByExchange: Record<string, number> = {}
+        const lastErrorByExchange: Record<string, string> = {}
 
-        await new Promise<void>((resolve) => {
-          new SimpleWebsocketClient(`ws://localhost:${PORT + 1}/ws-stream-normalized?options=${serializeOptions(options)}`, (message) => {
-            JSON.parse(message)
-            count++
-            if (count > 20000) {
-              resolve()
+        await new Promise<void>((resolve, reject) => {
+          let settled = false
+
+          const summarize = () => {
+            const exchangesWithNoMessages = options
+              .map((option) => option.exchange)
+              .filter((exchange) => (countsByExchange[exchange] ?? 0) === 0)
+
+            const exchangesWithErrors = Object.entries(errorCountsByExchange)
+              .sort((left, right) => right[1] - left[1])
+              .map(([exchange, errorCount]) => ({
+                exchange,
+                errorCount,
+                lastError: lastErrorByExchange[exchange]
+              }))
+
+            return {
+              totalMessages: count,
+              exchangesWithNoMessages,
+              exchangesWithErrors
             }
-          })
+          }
+
+          const ws = new SimpleWebsocketClient(
+            `ws://localhost:${PORT + 1}/ws-stream-normalized?options=${serializeOptions(options)}`,
+            (message) => {
+              const parsedMessage = JSON.parse(message)
+
+              if (parsedMessage.type === 'error') {
+                errorCountsByExchange[parsedMessage.exchange] = (errorCountsByExchange[parsedMessage.exchange] ?? 0) + 1
+                lastErrorByExchange[parsedMessage.exchange] = parsedMessage.details
+                return
+              }
+
+              count++
+              countsByExchange[parsedMessage.exchange] = (countsByExchange[parsedMessage.exchange] ?? 0) + 1
+
+              if (count > 20000 && !settled) {
+                settled = true
+                clearInterval(progressInterval)
+                clearTimeout(diagnosticTimeout)
+                ws.close()
+                resolve()
+              }
+            },
+            () => {},
+            (error) => {
+              if (settled) {
+                return
+              }
+
+              settled = true
+              clearInterval(progressInterval)
+              clearTimeout(diagnosticTimeout)
+              reject(error)
+            }
+          )
+
+          const progressInterval = setInterval(() => {
+            console.log('WS /ws-stream-normalized progress', summarize())
+          }, 30 * 1000)
+
+          const diagnosticTimeout = setTimeout(
+            () => {
+              if (settled) {
+                return
+              }
+
+              settled = true
+              clearInterval(progressInterval)
+              ws.close()
+              reject(new Error(`WS /ws-stream-normalized diagnostic timeout: ${JSON.stringify(summarize())}`))
+            },
+            1000 * 60 * 3 + 30 * 1000
+          )
         })
       },
       1000 * 60 * 4
@@ -672,7 +758,12 @@ describe('tardis-machine', () => {
 class SimpleWebsocketClient {
   private readonly _socket: WebSocket
   private isClosed = false
-  constructor(url: string, onMessageCB: (message: string) => void, onOpen: () => void = () => {}) {
+  constructor(
+    url: string,
+    onMessageCB: (message: string) => void,
+    onOpen: () => void = () => {},
+    onError: (error: Error) => void = () => {}
+  ) {
     this._socket = new WebSocket(url)
     this._socket.on('message', function (message: Buffer) {
       onMessageCB(message.toString())
@@ -680,12 +771,17 @@ class SimpleWebsocketClient {
     this._socket.on('open', onOpen)
     this._socket.on('error', (err) => {
       console.log('SimpleWebsocketClient Error', err)
+      onError(err)
     })
     this._socket.on('close', () => (this.isClosed = true))
   }
 
   public send(payload: any) {
     this._socket.send(JSON.stringify(payload))
+  }
+
+  public close() {
+    this._socket.close()
   }
 
   public async closed() {
