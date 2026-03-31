@@ -1,8 +1,7 @@
 #
 # uWebSockets.js v20.59.0 requires glibc >= 2.38 for the prebuilt Linux addon.
-# node:24-slim currently maps to Debian bookworm-slim (glibc 2.36), so use
-# the explicit trixie variant for Docker images.
-from node:24-trixie-slim
+# Use the explicit trixie variant to keep the base image on glibc >= 2.38.
+FROM node:25.8.2-trixie-slim
 # version arg contains current git tag
 ARG VERSION_ARG
 # install git

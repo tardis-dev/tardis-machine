@@ -2,7 +2,17 @@
   "name": "tardis-machine",
   "version": "15.0.0",
   "engines": {
-    "node": ">=24"
+    "node": ">=25"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=25"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": ">=11.11.1"
+    }
   },
   "description": "Locally runnable server with built-in data caching, providing both tick-level historical and consolidated real-time cryptocurrency market data via HTTP and WebSocket APIs",
   "main": "dist/index.js",
