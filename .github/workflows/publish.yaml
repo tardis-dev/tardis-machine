@@ -7,7 +7,7 @@ on:
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   publish:
@@ -51,8 +51,6 @@ jobs:
 
       - name: Push Version Changes To GitHub
         run: git push
-        env:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set Up QEMU
         uses: docker/setup-qemu-action@v4
