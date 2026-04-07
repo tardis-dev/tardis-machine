@@ -85,7 +85,7 @@
   "devDependencies": {
     "@types/debug": "^4.1.12",
     "@types/jest": "^30.0.0",
-    "@types/node": "^24.1.0",
+    "@types/node": "^25.5.2",
     "@types/node-fetch": "^2.6.13",
     "@types/split2": "^4.2.3",
     "@types/ws": "^8.18.1",
