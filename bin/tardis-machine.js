@@ -10,14 +10,12 @@ const cluster = require('node:cluster')
 const numCPUs = os.cpus().length
 const isDocker = require('is-docker')
 const pkg = require('../package.json')
-const { TardisMachine } = await import('../dist/index.js')
 
 const DEFAULT_PORT = 8000
 const argv = yargs
   .scriptName('tardis-machine')
   .env('TM_')
   .strict()
-
   .option('api-key', {
     type: 'string',
     describe: 'API key for tardis.dev API access'
@@ -42,13 +40,11 @@ const argv = yargs
     describe: 'Run tardis-machine as cluster of Node.js processes',
     default: false
   })
-
   .option('debug', {
     type: 'boolean',
     describe: 'Enable debug logs.',
     default: false
   })
-
   .help()
   .version()
   .usage('$0 [options]')
@@ -56,13 +52,13 @@ const argv = yargs
   .epilogue('See https://docs.tardis.dev/api/tardis-machine for more information.')
   .detectLocale(false).argv
 
-// if port ENV is defined use it otherwise use provided options
 const port = process.env.PORT ? +process.env.PORT : argv['port']
-const enableDebug = argv['debug']
 
-if (enableDebug) {
+if (argv['debug']) {
   process.env.DEBUG = 'tardis-dev:machine*,tardis-dev:realtime*'
 }
+
+const { TardisMachine } = await import('../dist/index.js')
 
 async function start() {
   const machine = new TardisMachine({
