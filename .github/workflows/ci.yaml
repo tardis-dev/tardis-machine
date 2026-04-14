@@ -12,6 +12,8 @@ jobs:
   ci:
     name: CI
     runs-on: ${{ matrix.os }}
+    env:
+      NPM_CONFIG_MIN_RELEASE_AGE: 0
 
     strategy:
       matrix:

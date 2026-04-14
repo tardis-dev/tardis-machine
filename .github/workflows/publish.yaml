@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       IMAGE_NAME: tardisdev/tardis-machine
+      NPM_CONFIG_MIN_RELEASE_AGE: 0
 
     steps:
       - name: Checkout
