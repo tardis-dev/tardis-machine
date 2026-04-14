@@ -17,7 +17,7 @@ The server runs two listeners: HTTP on port N and WebSocket on port N+1.
 
 **Backpressure** — WebSocket paths monitor send buffer pressure and pause data production when a client can't keep up. This prevents memory growth from slow consumers.
 
-**Caching** — Data is cached locally on disk in compressed GZIP format via tardis-dev. Subsequent requests for the same data range hit the cache.
+**Caching** — Data is cached locally on disk in compressed format via tardis-dev. Subsequent requests for the same data range hit the cache.
 
 ## Design Decisions
 

@@ -16,7 +16,7 @@
 
 - [seamless switching](https://docs.tardis.dev/tardis-machine/replaying-historical-data#normalized-market-data-apis) between real-time streaming and historical replay
 
-- transparent local data caching (compressed GZIP on disk, decompressed on demand)
+- transparent local data caching (compressed on disk, decompressed on demand)
 
 - support for many cryptocurrency exchanges — see [docs.tardis.dev](https://docs.tardis.dev) for the full list
 
