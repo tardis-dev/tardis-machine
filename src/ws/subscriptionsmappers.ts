@@ -665,6 +665,22 @@ const hyperliquidMapper: SubscriptionMapper = {
   }
 }
 
+const lighterMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.type === 'subscribe'
+  },
+
+  map: (message: any) => {
+    const [channel, symbol] = message.channel.split('/')
+    return [
+      {
+        channel,
+        symbols: symbol === undefined || symbol === 'all' ? [] : [symbol]
+      }
+    ]
+  }
+}
+
 export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -722,7 +738,8 @@ export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
   bitget: bitgetMapper,
   'bitget-futures': bitgetMapper,
   'coinbase-international': coinbaseInternationalMapper,
-  hyperliquid: hyperliquidMapper
+  hyperliquid: hyperliquidMapper,
+  lighter: lighterMapper
 }
 
 export type SubscriptionMapper = {
