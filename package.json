@@ -32,7 +32,7 @@
   "scripts": {
     "build": "tsc",
     "precommit": "lint-staged",
-    "test": "export UWS_HTTP_MAX_HEADERS_SIZE=20000 && npm run build && node --experimental-vm-modules ./node_modules/jest/bin/jest.js --forceExit --runInBand",
+    "test": "npm run build && cross-env UWS_HTTP_MAX_HEADERS_SIZE=20000 node --experimental-vm-modules ./node_modules/jest/bin/jest.js --forceExit --runInBand",
     "prepare": "npm run build",
     "format": "prettier --write .",
     "check-format": "prettier --check .",
@@ -78,7 +78,7 @@
     "debug": "^4.4.1",
     "find-my-way": "^9.3.0",
     "is-docker": "^2.2.1",
-    "tardis-dev": "^16.0.0",
+    "tardis-dev": "^16.1.1",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.59.0",
     "yargs": "^17.5.1"
   },
@@ -90,7 +90,7 @@
     "@types/split2": "^4.2.3",
     "@types/ws": "^8.18.1",
     "@types/yargs": "^17.0.33",
-    "cross-var": "^1.1.0",
+    "cross-env": "^10.1.0",
     "husky": "^9.1.7",
     "jest": "^30.0.5",
     "lint-staged": "^16.1.2",
