@@ -629,8 +629,8 @@ const bitgetMapper: SubscriptionMapper = {
   map: (message: any) => {
     return message.args.map((arg: any) => {
       return {
-        channel: arg.channel,
-        symbols: [arg.instId]
+        channel: arg.channel ?? arg.topic,
+        symbols: arg.instId !== undefined || arg.symbol !== undefined ? [arg.instId ?? arg.symbol] : []
       }
     })
   }
@@ -681,7 +681,7 @@ const lighterMapper: SubscriptionMapper = {
   }
 }
 
-export const subscriptionsMappers: { [key in Exchange]: SubscriptionMapper } = {
+export const subscriptionsMappers: Partial<Record<Exchange | 'lighter', SubscriptionMapper>> = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
   deribit: deribitMapper,
