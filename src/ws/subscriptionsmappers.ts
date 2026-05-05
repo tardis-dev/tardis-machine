@@ -681,6 +681,29 @@ const lighterMapper: SubscriptionMapper = {
   }
 }
 
+const bullishMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.method === 'subscribe'
+  },
+
+  map: (message: any) => {
+    const channelMappings = {
+      l2Orderbook: 'V1TALevel2',
+      l1Orderbook: 'V1TALevel1',
+      anonymousTrades: 'V1TAAnonymousTradeUpdate',
+      tick: 'V1TATickerResponse',
+      indexPrice: 'V1TAIndexPrice'
+    } as any
+
+    return [
+      {
+        channel: channelMappings[message.params.topic],
+        symbols: [message.params.symbol || message.params.assetSymbol]
+      }
+    ]
+  }
+}
+
 export const subscriptionsMappers: Partial<Record<Exchange | 'lighter', SubscriptionMapper>> = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -739,7 +762,8 @@ export const subscriptionsMappers: Partial<Record<Exchange | 'lighter', Subscrip
   'bitget-futures': bitgetMapper,
   'coinbase-international': coinbaseInternationalMapper,
   hyperliquid: hyperliquidMapper,
-  lighter: lighterMapper
+  lighter: lighterMapper,
+  bullish: bullishMapper
 }
 
 export type SubscriptionMapper = {

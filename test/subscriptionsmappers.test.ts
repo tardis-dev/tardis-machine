@@ -18,4 +18,36 @@ describe('subscriptions mappers', () => {
       { channel: 'spot_market_stats', symbols: [] }
     ])
   })
+
+  test('maps bullish market data subscriptions', () => {
+    const mapper = subscriptionsMappers.bullish
+    const date = new Date()
+
+    expect(
+      mapper.canHandle(
+        {
+          jsonrpc: '2.0',
+          type: 'command',
+          method: 'subscribe',
+          params: { topic: 'l2Orderbook', symbol: 'BTCUSDC' }
+        },
+        date
+      )
+    ).toBe(true)
+    expect(mapper.map({ method: 'subscribe', params: { topic: 'l2Orderbook', symbol: 'BTCUSDC' } }, date)).toEqual([
+      { channel: 'V1TALevel2', symbols: ['BTCUSDC'] }
+    ])
+    expect(mapper.map({ method: 'subscribe', params: { topic: 'l1Orderbook', symbol: 'BTCUSDC' } }, date)).toEqual([
+      { channel: 'V1TALevel1', symbols: ['BTCUSDC'] }
+    ])
+    expect(mapper.map({ method: 'subscribe', params: { topic: 'anonymousTrades', symbol: 'BTCUSDC' } }, date)).toEqual([
+      { channel: 'V1TAAnonymousTradeUpdate', symbols: ['BTCUSDC'] }
+    ])
+    expect(mapper.map({ method: 'subscribe', params: { topic: 'tick', symbol: 'BTC-USDC-PERP' } }, date)).toEqual([
+      { channel: 'V1TATickerResponse', symbols: ['BTC-USDC-PERP'] }
+    ])
+    expect(mapper.map({ method: 'subscribe', params: { topic: 'indexPrice', assetSymbol: 'BTC' } }, date)).toEqual([
+      { channel: 'V1TAIndexPrice', symbols: ['BTC'] }
+    ])
+  })
 })
