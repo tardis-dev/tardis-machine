@@ -704,7 +704,30 @@ const bullishMapper: SubscriptionMapper = {
   }
 }
 
-export const subscriptionsMappers: Partial<Record<Exchange | 'lighter', SubscriptionMapper>> = {
+const polymarketMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.type === 'market'
+  },
+
+  map: (message: any) => {
+    const symbols = message.assets_ids
+
+    const filters = [
+      { channel: 'book', symbols },
+      { channel: 'price_change', symbols },
+      { channel: 'last_trade_price', symbols },
+      { channel: 'tick_size_change', symbols }
+    ]
+
+    if (message.custom_feature_enabled === true) {
+      filters.push({ channel: 'best_bid_ask', symbols }, { channel: 'new_market', symbols }, { channel: 'market_resolved', symbols })
+    }
+
+    return filters
+  }
+}
+
+export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
   deribit: deribitMapper,
@@ -763,7 +786,8 @@ export const subscriptionsMappers: Partial<Record<Exchange | 'lighter', Subscrip
   'coinbase-international': coinbaseInternationalMapper,
   hyperliquid: hyperliquidMapper,
   lighter: lighterMapper,
-  bullish: bullishMapper
+  bullish: bullishMapper,
+  polymarket: polymarketMapper
 }
 
 export type SubscriptionMapper = {

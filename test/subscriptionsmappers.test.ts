@@ -50,4 +50,50 @@ describe('subscriptions mappers', () => {
       { channel: 'V1TAIndexPrice', symbols: ['BTC'] }
     ])
   })
+
+  test('maps Polymarket market subscriptions', () => {
+    const mapper = subscriptionsMappers.polymarket
+    const date = new Date()
+    const message = { type: 'market', assets_ids: ['2174101397', '713210352'] }
+
+    expect(mapper.canHandle(message, date)).toBe(true)
+    expect(mapper.map(message, date)).toEqual([
+      { channel: 'book', symbols: ['2174101397', '713210352'] },
+      { channel: 'price_change', symbols: ['2174101397', '713210352'] },
+      { channel: 'last_trade_price', symbols: ['2174101397', '713210352'] },
+      { channel: 'tick_size_change', symbols: ['2174101397', '713210352'] }
+    ])
+  })
+
+  test('maps Polymarket custom market subscriptions', () => {
+    const mapper = subscriptionsMappers.polymarket
+    const date = new Date()
+    const message = { type: 'market', assets_ids: ['2174101397'], custom_feature_enabled: true }
+
+    expect(mapper.map(message, date)).toEqual([
+      { channel: 'book', symbols: ['2174101397'] },
+      { channel: 'price_change', symbols: ['2174101397'] },
+      { channel: 'last_trade_price', symbols: ['2174101397'] },
+      { channel: 'tick_size_change', symbols: ['2174101397'] },
+      { channel: 'best_bid_ask', symbols: ['2174101397'] },
+      { channel: 'new_market', symbols: ['2174101397'] },
+      { channel: 'market_resolved', symbols: ['2174101397'] }
+    ])
+  })
+
+  test('maps Polymarket empty asset subscriptions', () => {
+    const mapper = subscriptionsMappers.polymarket
+    const date = new Date()
+    const message = { type: 'market', assets_ids: [], custom_feature_enabled: true }
+
+    expect(mapper.map(message, date)).toEqual([
+      { channel: 'book', symbols: [] },
+      { channel: 'price_change', symbols: [] },
+      { channel: 'last_trade_price', symbols: [] },
+      { channel: 'tick_size_change', symbols: [] },
+      { channel: 'best_bid_ask', symbols: [] },
+      { channel: 'new_market', symbols: [] },
+      { channel: 'market_resolved', symbols: [] }
+    ])
+  })
 })
