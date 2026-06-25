@@ -16,7 +16,7 @@ npm run check-format   # prettier check
 - Preserve backpressure handling in WebSocket paths
 - Maintain mapper correctness in `src/ws/subscriptionsmappers.ts`
 - Avoid heavy synchronous logic on request paths
-- **Format after every edit** — run `npx prettier --write` on modified files after each change
+- Run the repo formatter/check-format before handoff and before staging, committing, or opening a PR. Do not run Prettier after every edit by default.
 
 ## Validation
 
