@@ -46,7 +46,7 @@ const argv = yargs
     default: false
   })
   .help()
-  .version()
+  .version(pkg.version)
   .usage('$0 [options]')
   .example('$0 --api-key=YOUR_API_KEY')
   .epilogue('See https://docs.tardis.dev/api/tardis-machine for more information.')
