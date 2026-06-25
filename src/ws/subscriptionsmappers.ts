@@ -635,6 +635,49 @@ const bitgetMapper: SubscriptionMapper = {
     })
   }
 }
+
+const mexcMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.method === 'SUBSCRIPTION' && Array.isArray(message.params)
+  },
+
+  map: (message: any) => {
+    return message.params.map((param: string) => {
+      const separator = param.lastIndexOf('@')
+
+      return {
+        channel: separator === -1 ? param : param.slice(0, separator),
+        symbols: separator === -1 ? [] : [param.slice(separator + 1)]
+      }
+    })
+  }
+}
+
+const mexcFuturesChannelMappings: Record<string, string> = {
+  'sub.deal': 'push.deal',
+  'sub.depth': 'push.depth',
+  'sub.ticker': 'push.ticker',
+  'sub.index.price': 'push.index.price',
+  'sub.fair.price': 'push.fair.price',
+  'sub.funding.rate': 'push.funding.rate',
+  'sub.contract': 'push.contract'
+}
+
+const mexcFuturesMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return mexcFuturesChannelMappings[message.method] !== undefined
+  },
+
+  map: (message: any) => {
+    return [
+      {
+        channel: mexcFuturesChannelMappings[message.method],
+        symbols: message.param?.symbol !== undefined ? [message.param.symbol] : []
+      }
+    ]
+  }
+}
+
 const coinbaseInternationalMapper: SubscriptionMapper = {
   canHandle: (message: any) => {
     return message.type === 'SUBSCRIBE'
@@ -786,6 +829,8 @@ export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
   'kucoin-futures': kucoinMapper,
   bitget: bitgetMapper,
   'bitget-futures': bitgetMapper,
+  mexc: mexcMapper,
+  'mexc-futures': mexcFuturesMapper,
   'coinbase-international': coinbaseInternationalMapper,
   hyperliquid: hyperliquidMapper,
   lighter: lighterMapper,

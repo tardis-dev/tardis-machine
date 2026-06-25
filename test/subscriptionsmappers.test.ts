@@ -13,6 +13,32 @@ describe('subscriptions mappers', () => {
     ])
   })
 
+  test('maps MEXC spot subscriptions', () => {
+    const mapper = subscriptionsMappers.mexc
+    const date = new Date()
+    const message = {
+      method: 'SUBSCRIPTION',
+      params: ['spot@public.aggre.deals.v3.api.pb@10ms@BTCUSDT', 'spot@public.aggre.depth.v3.api.pb@10ms@ETHUSDT']
+    }
+
+    expect(mapper.canHandle(message, date)).toBe(true)
+    expect(mapper.map(message, date)).toEqual([
+      { channel: 'spot@public.aggre.deals.v3.api.pb@10ms', symbols: ['BTCUSDT'] },
+      { channel: 'spot@public.aggre.depth.v3.api.pb@10ms', symbols: ['ETHUSDT'] }
+    ])
+  })
+
+  test('maps MEXC futures subscriptions', () => {
+    const mapper = subscriptionsMappers['mexc-futures']
+    const date = new Date()
+
+    expect(mapper.canHandle({ method: 'sub.depth', param: { symbol: 'BTC_USDT' }, gzip: false }, date)).toBe(true)
+    expect(mapper.map({ method: 'sub.depth', param: { symbol: 'BTC_USDT' }, gzip: false }, date)).toEqual([
+      { channel: 'push.depth', symbols: ['BTC_USDT'] }
+    ])
+    expect(mapper.map({ method: 'sub.contract' }, date)).toEqual([{ channel: 'push.contract', symbols: [] }])
+  })
+
   test('maps lighter symbol-scoped subscriptions', () => {
     const mapper = subscriptionsMappers.lighter
 
