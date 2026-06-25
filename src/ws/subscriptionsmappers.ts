@@ -656,10 +656,13 @@ const hyperliquidMapper: SubscriptionMapper = {
   },
 
   map: (message: any) => {
+    const subscription = message.subscription ?? message
+    const isFastBook = subscription.type === 'l2Book' && subscription.fast === true
+
     return [
       {
-        channel: message.type,
-        symbols: [message.coin]
+        channel: isFastBook ? 'fastBook' : subscription.type,
+        symbols: [subscription.coin]
       }
     ]
   }

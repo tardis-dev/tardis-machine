@@ -1,6 +1,18 @@
 import { subscriptionsMappers } from '../src/ws/subscriptionsmappers.ts'
 
 describe('subscriptions mappers', () => {
+  test('maps Hyperliquid fast book subscriptions', () => {
+    const mapper = subscriptionsMappers.hyperliquid
+    const date = new Date()
+
+    expect(mapper.map({ method: 'subscribe', subscription: { type: 'l2Book', coin: 'BTC' } }, date)).toEqual([
+      { channel: 'l2Book', symbols: ['BTC'] }
+    ])
+    expect(mapper.map({ method: 'subscribe', subscription: { type: 'l2Book', coin: 'BTC', fast: true } }, date)).toEqual([
+      { channel: 'fastBook', symbols: ['BTC'] }
+    ])
+  })
+
   test('maps lighter symbol-scoped subscriptions', () => {
     const mapper = subscriptionsMappers.lighter
 
