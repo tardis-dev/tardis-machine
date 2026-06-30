@@ -607,17 +607,35 @@ const bitnomialMapper: SubscriptionMapper = {
 
 const wooxMapper: SubscriptionMapper = {
   canHandle: (message: any) => {
-    return message.event === 'subscribe'
+    return message.event === 'subscribe' || message.cmd === 'SUBSCRIBE'
   },
 
   map: (message: any) => {
-    const [symbol, channel] = message.topic.split('@')
-    return [
-      {
+    const topics = message.topic !== undefined ? [message.topic] : message.data
+
+    return topics.map((topic: string) => {
+      const { channel, symbol } = parseWooxTopic(topic)
+      return {
         channel,
         symbols: symbol
       }
-    ]
+    })
+  }
+}
+
+function parseWooxTopic(topic: string) {
+  const parts = topic.split('@')
+
+  if (parts[0].startsWith('SPOT_') || parts[0].startsWith('PERP_')) {
+    return {
+      symbol: parts[0],
+      channel: parts[1]
+    }
+  }
+
+  return {
+    channel: parts[0],
+    symbol: parts[1]
   }
 }
 

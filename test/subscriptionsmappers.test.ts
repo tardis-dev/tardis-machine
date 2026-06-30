@@ -39,6 +39,26 @@ describe('subscriptions mappers', () => {
     expect(mapper.map({ method: 'sub.contract' }, date)).toEqual([{ channel: 'push.contract', symbols: [] }])
   })
 
+  test('maps WOO X v2 and v3 subscriptions', () => {
+    const mapper = subscriptionsMappers['woo-x']
+    const date = new Date()
+
+    const v2Message = { event: 'subscribe', topic: 'PERP_BTC_USDT@orderbookupdate' }
+    expect(mapper.canHandle(v2Message, date)).toBe(true)
+    expect(mapper.map(v2Message, date)).toEqual([{ channel: 'orderbookupdate', symbols: 'PERP_BTC_USDT' }])
+
+    const v3Message = {
+      cmd: 'SUBSCRIBE',
+      success: true,
+      data: ['trade@PERP_BTC_USDT', 'orderbookupdate@PERP_BTC_USDT@50']
+    }
+    expect(mapper.canHandle(v3Message, date)).toBe(true)
+    expect(mapper.map(v3Message, date)).toEqual([
+      { channel: 'trade', symbols: 'PERP_BTC_USDT' },
+      { channel: 'orderbookupdate', symbols: 'PERP_BTC_USDT' }
+    ])
+  })
+
   test('maps lighter symbol-scoped subscriptions', () => {
     const mapper = subscriptionsMappers.lighter
 
