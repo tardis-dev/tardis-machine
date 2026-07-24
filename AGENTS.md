@@ -30,6 +30,7 @@ npm run check-format   # prettier check
 ## Publishing
 
 Published via GitHub Actions (`publish.yaml`). Do not publish manually unless explicitly requested.
+If npm publishing succeeds but the Docker build fails, verify the version is public and run `publish_docker.yaml` for that existing version.
 
 ## Keeping Docs Current
 
