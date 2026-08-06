@@ -26,6 +26,7 @@ npm run check-format   # prettier check
 ## Operational Docs
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — dual-server design, HTTP/WS routing, session management
+- [ADD_NEW_EXCHANGE.md](ADD_NEW_EXCHANGE.md) — consume new `tardis-dev` exchange support and add native replay subscription mapping
 
 ## Publishing
 
