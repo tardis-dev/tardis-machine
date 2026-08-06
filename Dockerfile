@@ -12,7 +12,7 @@ RUN for attempt in $(seq 1 60); do \
       if [ "$attempt" -eq 60 ]; then exit 1; fi; \
       sleep 10; \
     done && \
-    npm install --global --unsafe-perm "tardis-machine@$VERSION_ARG"
+    npm install --global --ignore-scripts "tardis-machine@$VERSION_ARG"
 
 ENV UWS_HTTP_MAX_HEADERS_SIZE=20000
 # run it

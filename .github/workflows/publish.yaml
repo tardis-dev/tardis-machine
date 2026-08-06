@@ -2,75 +2,173 @@ name: Publish New Release To NPM And Image To Docker Hub
 
 on:
   release:
-    # This specifies that the build will be triggered when we publish a release
     types: [published]
 
-permissions:
-  id-token: write
-  contents: write
+permissions: {}
 
 jobs:
-  publish:
-    name: Publish New Release To NPM And Image To Docker Hub
+  build:
+    name: Build And Pack Release
     runs-on: ubuntu-latest
-    env:
-      IMAGE_NAME: tardisdev/tardis-machine
-      NPM_CONFIG_MIN_RELEASE_AGE: 0
+    permissions:
+      contents: read
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Checkout Release Tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.release.target_commitish }}
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate Release Tag
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ "$RELEASE_VERSION" == v* ]]; then
+            echo "Release tag must be a plain semver version without a v prefix: $RELEASE_VERSION" >&2
+            exit 1
+          fi
+
+          release_commit=$(git rev-parse HEAD)
+          if ! git merge-base --is-ancestor "$release_commit" "origin/${DEFAULT_BRANCH}"; then
+            echo "Release tag must point to a commit in the ${DEFAULT_BRANCH} history." >&2
+            exit 1
+          fi
 
       - name: Use Node.js v25.8.2
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 25.8.2
+          package-manager-cache: false
+
+      - name: Install Dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Verify Registry Signatures
+        env:
+          NPM_CONFIG_MIN_RELEASE_AGE: 0
+        run: npm audit signatures
+
+      - name: Audit Production Dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Set Package Version
+        env:
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}
+        run: npm version "$RELEASE_VERSION" --no-git-tag-version --ignore-scripts
+
+      - name: Run Tests
+        run: npm test
+
+      - name: Create npm Tarball
+        run: |
+          mkdir publish-artifact
+          npm pack --ignore-scripts --pack-destination publish-artifact
+
+      - name: Upload Package Artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: npm-package
+          path: publish-artifact/*.tgz
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  publish-npm:
+    name: Publish Package To NPM
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Use Node.js v25.8.2
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 25.8.2
           registry-url: https://registry.npmjs.org/
 
-      - name: Install Dependencies And Compile TS
-        run: npm ci --ignore-scripts
-
-      - name: Verify Registry Signatures
-        run: npm audit signatures
-
-      - name: Audit Production Dependencies
-        run: npm audit --omit=dev --audit-level=critical
-
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Release Bot"
-          git config --global user.email "deploy@tardis.dev"
-
-      - name: Update package version
-        run: npm version ${{ github.event.release.tag_name }}
-
-      - name: Run Tests
-        run: npm run test
+      - name: Download Package Artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: npm-package
+          path: publish-artifact
 
       - name: Publish Package
-        run: npm publish
+        run: |
+          shopt -s nullglob
+          tarballs=(./publish-artifact/*.tgz)
+          if [[ "${#tarballs[@]}" -ne 1 ]]; then
+            echo "Expected exactly one package tarball, found ${#tarballs[@]}." >&2
+            exit 1
+          fi
+          npm publish "${tarballs[0]}" --ignore-scripts
 
-      - name: Push Version Changes To GitHub
+  update-version:
+    name: Commit Package Version
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Use Node.js v25.8.2
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 25.8.2
+          package-manager-cache: false
+
+      - name: Checkout Default Branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Commit Package Version
         env:
-          VERSION_BRANCH: ${{ github.event.repository.default_branch }}
-        run: git push origin "HEAD:${VERSION_BRANCH}"
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          RELEASE_VERSION: ${{ github.event.release.tag_name }}
+        run: |
+          git config user.name "GitHub Release Bot"
+          git config user.email "deploy@tardis.dev"
+          npm version "$RELEASE_VERSION" --no-git-tag-version --ignore-scripts
+          git add package.json package-lock.json
+          git commit -m "$RELEASE_VERSION"
+          git push origin "HEAD:${DEFAULT_BRANCH}"
+
+  publish-docker:
+    name: Publish Image To Docker Hub
+    needs: update-version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      IMAGE_NAME: tardisdev/tardis-machine
+
+    steps:
+      - name: Checkout Release Tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
 
       - name: Set Up QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
 
       - name: Set Up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Login To Docker Hub
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build And Push Docker Image
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64

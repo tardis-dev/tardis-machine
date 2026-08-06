@@ -76,10 +76,10 @@
   "license": "MPL-2.0",
   "dependencies": {
     "debug": "^4.4.1",
-    "find-my-way": "^9.3.0",
+    "find-my-way": "^9.7.0",
     "is-docker": "^2.2.1",
-    "tardis-dev": "^17.1.0",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.59.0",
+    "tardis-dev": "^17.2.2",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#e38c6ebde147c91ca75536db780480458440ece5",
     "yargs": "^17.5.1"
   },
   "devDependencies": {

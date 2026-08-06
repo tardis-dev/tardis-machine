@@ -8,12 +8,13 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     name: CI
     runs-on: ${{ matrix.os }}
-    env:
-      NPM_CONFIG_MIN_RELEASE_AGE: 0
 
     strategy:
       matrix:
@@ -22,10 +23,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Use Node.js v${{ matrix.node-version }}
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node-version }}
 
@@ -33,10 +36,12 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Verify Registry Signatures
+        env:
+          NPM_CONFIG_MIN_RELEASE_AGE: 0
         run: npm audit signatures
 
       - name: Audit Production Dependencies
-        run: npm audit --omit=dev --audit-level=critical
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Check Code Format
         run: npm run check-format
