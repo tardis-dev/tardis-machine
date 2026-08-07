@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Published tardis-machine npm version
+        description: Published bundled tardis-machine npm version
         required: true
         type: string
 
@@ -24,15 +24,28 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Use Node.js v25.8.2
+      - name: Use Node.js v26.7.0
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 25.8.2
+          node-version: 26.7.0
+          package-manager-cache: false
 
-      - name: Verify Published NPM Version
+      - name: Download Published Package
         env:
           VERSION: ${{ inputs.version }}
-        run: test "$(npm view "tardis-machine@$VERSION" version)" = "$VERSION"
+        run: |
+          mkdir publish-artifact
+          for attempt in $(seq 1 60); do
+            if npm pack "tardis-machine@$VERSION" --ignore-scripts --pack-destination publish-artifact --min-release-age-exclude=tardis-machine --allow-remote=all; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              exit 1
+            fi
+            sleep 10
+          done
+          mv publish-artifact/*.tgz publish-artifact/tardis-machine.tgz
+          tar -tzf publish-artifact/tardis-machine.tgz package/node_modules/tardis-dev/package.json > /dev/null
 
       - name: Set Up QEMU
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
@@ -52,7 +65,6 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          build-args: VERSION_ARG=${{ inputs.version }}
           tags: |
             ${{ env.IMAGE_NAME }}:${{ inputs.version }}
             ${{ env.IMAGE_NAME }}:latest

@@ -1,19 +1,21 @@
-#
-# uWebSockets.js v20.59.0 requires glibc >= 2.38 for the prebuilt Linux addon.
+# uWebSockets.js requires glibc >= 2.38 for its prebuilt Linux addon.
 # Use the explicit trixie variant to keep the base image on glibc >= 2.38.
-FROM node:25.8.2-trixie-slim
-# version arg contains current git tag
-ARG VERSION_ARG
-# install git
-RUN apt-get update && apt-get install -y git
-# install tardis-machine globally (exposes tardis-machine command)
-RUN for attempt in $(seq 1 60); do \
-      npm view "tardis-machine@$VERSION_ARG" version --prefer-online >/dev/null 2>&1 && break; \
-      if [ "$attempt" -eq 60 ]; then exit 1; fi; \
-      sleep 10; \
-    done && \
-    npm install --global --ignore-scripts "tardis-machine@$VERSION_ARG"
+FROM node:26.7.0-trixie-slim AS package
 
+COPY publish-artifact/tardis-machine.tgz /tmp/tardis-machine.tgz
+
+RUN mkdir /tmp/tardis-machine \
+  && tar -xzf /tmp/tardis-machine.tgz --strip-components=1 -C /tmp/tardis-machine \
+  && node /tmp/tardis-machine/bin/tardis-machine.js --version > /dev/null \
+  && node --input-type=module --eval "await import('/tmp/tardis-machine/dist/index.js')" \
+  && rm /tmp/tardis-machine.tgz
+
+FROM node:26.7.0-trixie-slim
+
+ENV NODE_ENV=production
 ENV UWS_HTTP_MAX_HEADERS_SIZE=20000
-# run it
-CMD tardis-machine --cache-dir=/.cache
+ENV TM_CACHE_DIR=/.cache
+
+COPY --from=package /tmp/tardis-machine /opt/tardis-machine
+
+ENTRYPOINT ["node", "/opt/tardis-machine/bin/tardis-machine.js"]

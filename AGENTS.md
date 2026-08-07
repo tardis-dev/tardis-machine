@@ -4,6 +4,8 @@ Public npm package and Docker image. Locally runnable server providing HTTP and 
 
 ## Build & Test
 
+Use the Node.js version from `.nvmrc` and its bundled npm.
+
 ```bash
 npm run build          # tsc
 npm test               # build + jest
