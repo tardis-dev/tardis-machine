@@ -1,4 +1,3 @@
-import findMyWay from 'find-my-way'
 import http from 'node:http'
 import { createRequire } from 'module'
 import { clearCache, init } from 'tardis-dev'
@@ -22,18 +21,27 @@ export class TardisMachine {
       _userAgent: `tardis-machine/${packageJson.version} (+https://github.com/tardis-dev/tardis-machine)`
     })
 
-    const router = findMyWay({ ignoreTrailingSlash: true })
+    const routes = new Map<string, http.RequestListener>([
+      ['/replay', replayHttp],
+      ['/replay-normalized', replayNormalizedHttp],
+      ['/health-check', healthCheck]
+    ])
 
     this._httpServer = http.createServer((req, res) => {
-      router.lookup(req, res)
+      const pathname = new URL(req.url ?? '/', 'http://localhost').pathname.replace(/\/$/, '') || '/'
+      const route = req.method === 'GET' ? routes.get(pathname) : undefined
+
+      if (route === undefined) {
+        res.statusCode = 404
+        res.end()
+        return
+      }
+
+      route(req, res)
     })
 
     // set timeout to 0 meaning infinite http timout - streaming may take some time expecially for longer date ranges
     this._httpServer.timeout = 0
-
-    router.on('GET', '/replay', replayHttp)
-    router.on('GET', '/replay-normalized', replayNormalizedHttp)
-    router.on('GET', '/health-check', healthCheck)
 
     const wsRoutes = {
       '/ws-replay': replayWS,

@@ -25,6 +25,24 @@ describe('tardis-machine', () => {
     await tardisMachine.stop()
   })
 
+  test('routes health checks with or without a trailing slash', async () => {
+    for (const path of ['/health-check', '/health-check/']) {
+      const response = await fetch(`http://localhost:${PORT}${path}`)
+      const body = (await response.json()) as { status: string }
+
+      expect(response.status).toBe(200)
+      expect(body.status).toBe('Healthy')
+    }
+  })
+
+  test('returns 404 for unknown routes and unsupported methods', async () => {
+    const unknownRoute = await fetch(`http://localhost:${PORT}/unknown`)
+    const unsupportedMethod = await fetch(`http://localhost:${PORT}/health-check`, { method: 'POST' })
+
+    expect(unknownRoute.status).toBe(404)
+    expect(unsupportedMethod.status).toBe(404)
+  })
+
   describe('HTTP GET /replay-normalized', () => {
     ;(test(
       'replays Bitmex ETHUSD trades and order book changes',

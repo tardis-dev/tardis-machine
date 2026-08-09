@@ -6,7 +6,7 @@ tardis-machine is a local server that wraps `tardis-dev` library functionality i
 
 The server runs two listeners: HTTP on port N and WebSocket on port N+1.
 
-- **HTTP** — Node.js `http` module with `find-my-way` router. Endpoints for historical replay (exchange-native and normalized) and health check. Responses are streamed with batched buffering for throughput.
+- **HTTP** — Node.js `http` module with an exact-route table for the three endpoints: historical replay (exchange-native and normalized) and health check. Responses are streamed with batched buffering for throughput.
 - **WebSocket** — `uWebSockets.js` for high-performance WebSocket handling with built-in backpressure. Endpoints for historical replay and real-time streaming (exchange-native and normalized).
 
 ## Key Concepts
