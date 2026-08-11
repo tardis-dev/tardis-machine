@@ -1,9 +1,9 @@
 import http from 'node:http'
 import { createRequire } from 'module'
 import { clearCache, init } from 'tardis-dev'
-import { App, DISABLED, TemplatedApp } from 'uWebSockets.js'
 import { healthCheck, replayHttp, replayNormalizedHttp } from './http/index.ts'
 import { replayNormalizedWS, replayWS, streamNormalizedWS } from './ws/index.ts'
+import { MachineWebSocketServer } from './ws/server.ts'
 import { debug } from './debug.ts'
 
 const require = createRequire(import.meta.url)
@@ -11,7 +11,7 @@ const packageJson = require('../package.json') as { version: string }
 
 export class TardisMachine {
   private readonly _httpServer: http.Server
-  private readonly _wsServer: TemplatedApp
+  private readonly _wsServer: MachineWebSocketServer
   private _eventLoopTimerId: NodeJS.Timeout | undefined = undefined
 
   constructor(private readonly options: Options) {
@@ -43,55 +43,33 @@ export class TardisMachine {
     // set timeout to 0 meaning infinite http timout - streaming may take some time expecially for longer date ranges
     this._httpServer.timeout = 0
 
-    const wsRoutes = {
+    this._wsServer = new MachineWebSocketServer({
       '/ws-replay': replayWS,
       '/ws-replay-normalized': replayNormalizedWS,
       '/ws-stream-normalized': streamNormalizedWS
-    } as any
-
-    this._wsServer = App().ws('/*', {
-      compression: DISABLED,
-      maxPayloadLength: 512 * 1024,
-      idleTimeout: 60,
-      maxBackpressure: 5 * 1024 * 1024,
-      closeOnBackpressureLimit: true,
-      upgrade: (res: any, req: any, context: any) => {
-        res.upgrade(
-          { req },
-          req.getHeader('sec-websocket-key'),
-          req.getHeader('sec-websocket-protocol'),
-          req.getHeader('sec-websocket-extensions'),
-          context
-        )
-      },
-      open: (ws: any) => {
-        const path = ws.req.getUrl().toLocaleLowerCase()
-        ws.closed = false
-        const matchingRoute = wsRoutes[path]
-
-        if (matchingRoute !== undefined) {
-          matchingRoute(ws, ws.req)
-        } else {
-          ws.end(1008)
-        }
-      },
-
-      message: (ws: any, message: ArrayBuffer) => {
-        if (ws.onmessage !== undefined) {
-          ws.onmessage(message)
-        }
-      },
-
-      close: (ws: any) => {
-        ws.closed = true
-        if (ws.onclose !== undefined) {
-          ws.onclose()
-        }
-      }
-    } as any)
+    })
   }
 
   public async start(port: number) {
+    if (this.options.clearCache) {
+      await clearCache()
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      this._httpServer.once('error', reject)
+      this._httpServer.listen(port, () => {
+        this._httpServer.removeListener('error', reject)
+        resolve()
+      })
+    })
+
+    try {
+      await this._wsServer.listen(port + 1)
+    } catch (error) {
+      await new Promise<void>((resolve) => this._httpServer.close(() => resolve()))
+      throw error
+    }
+
     let start = process.hrtime()
     const interval = 500
 
@@ -108,31 +86,10 @@ export class TardisMachine {
 
       start = process.hrtime()
     }, interval)
-
-    if (this.options.clearCache) {
-      await clearCache()
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      try {
-        this._httpServer.on('error', reject)
-        this._httpServer.listen(port, () => {
-          this._wsServer.listen(port + 1, (listenSocket) => {
-            if (listenSocket) {
-              resolve()
-            } else {
-              reject(new Error('ws server did not start'))
-            }
-          })
-        })
-      } catch (e) {
-        reject(e)
-      }
-    })
   }
 
   public async stop() {
-    this._wsServer.close()
+    await this._wsServer.close()
 
     await new Promise<void>((resolve, reject) => {
       this._httpServer.close((err) => {

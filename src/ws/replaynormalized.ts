@@ -1,14 +1,14 @@
 import { decode } from 'node:querystring'
 import { combine, compute, replayNormalized } from 'tardis-dev'
-import type { HttpRequest } from 'uWebSockets.js'
 import { debug } from '../debug.ts'
 import { constructDataTypeFilter, getComputables, getNormalizers, ReplayNormalizedRequestOptions, wait } from '../helpers.ts'
+import type { MachineWebSocket } from './server.ts'
 
-export async function replayNormalizedWS(ws: any, req: HttpRequest) {
+export async function replayNormalizedWS(ws: MachineWebSocket, query: string) {
   let messages: AsyncIterableIterator<any> | undefined
   try {
     const startTimestamp = new Date().getTime()
-    const parsedQuery = decode(req.getQuery())
+    const parsedQuery = decode(query)
     const optionsString = parsedQuery['options'] as string
     const replayNormalizedOptions = JSON.parse(optionsString) as ReplayNormalizedRequestOptions
 
@@ -34,6 +34,8 @@ export async function replayNormalizedWS(ws: any, req: HttpRequest) {
     messages = messagesIterables.length === 1 ? messagesIterables[0] : combine(...messagesIterables)
 
     for await (const message of messages) {
+      if (ws.closed) return
+
       if (!filterByDataType(message)) {
         continue
       }
@@ -41,13 +43,13 @@ export async function replayNormalizedWS(ws: any, req: HttpRequest) {
       const success = ws.send(JSON.stringify(message))
       // handle backpressure in case of slow clients
       if (!success) {
-        while (ws.getBufferedAmount() > 0) {
+        while (!ws.closed && ws.getBufferedAmount() > 0) {
           await wait(1)
         }
       }
     }
 
-    while (ws.getBufferedAmount() > 0) {
+    while (!ws.closed && ws.getBufferedAmount() > 0) {
       await wait(100)
     }
 
@@ -63,7 +65,7 @@ export async function replayNormalizedWS(ws: any, req: HttpRequest) {
   } catch (e: any) {
     // this will underlying open WS connections
     if (messages !== undefined) {
-      messages!.return!()
+      await messages.return?.()
     }
     if (!ws.closed) {
       ws.end(1011, e.toString())

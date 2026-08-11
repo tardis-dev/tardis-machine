@@ -7,7 +7,7 @@ tardis-machine is a local server that wraps `tardis-dev` library functionality i
 The server runs two listeners: HTTP on port N and WebSocket on port N+1.
 
 - **HTTP** — Node.js `http` module with an exact-route table for the three endpoints: historical replay (exchange-native and normalized) and health check. Responses are streamed with batched buffering for throughput.
-- **WebSocket** — `uWebSockets.js` for high-performance WebSocket handling with built-in backpressure. Endpoints for historical replay and real-time streaming (exchange-native and normalized).
+- **WebSocket** — `ws` with explicit payload, heartbeat, and backpressure limits. Endpoints for historical replay and real-time streaming (exchange-native and normalized).
 
 ## Key Concepts
 
@@ -21,6 +21,6 @@ The server runs two listeners: HTTP on port N and WebSocket on port N+1.
 
 ## Design Decisions
 
-- **Separate HTTP and WS ports** — Avoids complexity of protocol upgrade handling; uWebSockets.js runs its own event loop
+- **Separate HTTP and WS ports** — Keeps long-lived WebSocket traffic isolated from HTTP replay requests
 - **Backpressure-first WS design** — Slow consumers don't cause memory growth; production pauses when send buffer fills
 - **Exchange-native WS compatibility** — Subscription mappers allow existing exchange clients to work against historical data unchanged

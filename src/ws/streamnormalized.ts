@@ -1,15 +1,15 @@
 import { decode } from 'node:querystring'
 import { combine, compute, Exchange, streamNormalized } from 'tardis-dev'
-import type { HttpRequest } from 'uWebSockets.js'
 import { debug } from '../debug.ts'
 import { constructDataTypeFilter, getComputables, getNormalizers, StreamNormalizedRequestOptions, wait } from '../helpers.ts'
+import type { MachineWebSocket } from './server.ts'
 
-export async function streamNormalizedWS(ws: any, req: HttpRequest) {
+export async function streamNormalizedWS(ws: MachineWebSocket, query: string) {
   let messages: AsyncIterableIterator<any> | undefined
 
   try {
     const startTimestamp = new Date().getTime()
-    const parsedQuery = decode(req.getQuery())
+    const parsedQuery = decode(query)
     const optionsString = parsedQuery['options'] as string
     const streamNormalizedOptions = JSON.parse(optionsString) as StreamNormalizedRequestOptions
 
@@ -84,7 +84,7 @@ export async function streamNormalizedWS(ws: any, req: HttpRequest) {
       retries = 0
       bufferedAmount = 0
       // handle backpressure in case of slow clients
-      while ((bufferedAmount = ws.getBufferedAmount()) > 0) {
+      while (!ws.closed && (bufferedAmount = ws.getBufferedAmount()) > 0) {
         retries += 1
         const isState = new Date().valueOf() - message.localTimestamp.valueOf() >= 6
 
@@ -101,6 +101,8 @@ export async function streamNormalizedWS(ws: any, req: HttpRequest) {
         await wait(3 * retries)
       }
 
+      if (ws.closed) return
+
       ws.send(JSON.stringify(message))
 
       if (message.type !== 'disconnect') {
@@ -108,7 +110,7 @@ export async function streamNormalizedWS(ws: any, req: HttpRequest) {
       }
     }
 
-    while (ws.getBufferedAmount() > 0) {
+    while (!ws.closed && ws.getBufferedAmount() > 0) {
       await wait(100)
     }
 
@@ -131,7 +133,7 @@ export async function streamNormalizedWS(ws: any, req: HttpRequest) {
   } finally {
     // this will close underlying open WS connections
     if (messages !== undefined) {
-      messages!.return!()
+      await messages.return?.()
     }
   }
 }

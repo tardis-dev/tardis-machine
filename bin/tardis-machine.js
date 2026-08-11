@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-process.env.UWS_HTTP_MAX_HEADERS_SIZE = '20000'
 import { createRequire } from 'node:module'
 import { parseArgs } from 'node:util'
 import os from 'node:os'

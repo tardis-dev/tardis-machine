@@ -1,6 +1,4 @@
-# uWebSockets.js requires glibc >= 2.38 for its prebuilt Linux addon.
-# Use the explicit trixie variant to keep the base image on glibc >= 2.38.
-FROM node:26.7.0-trixie-slim AS package
+FROM node:26.7.0-bookworm-slim AS package
 
 COPY publish-artifact/tardis-machine.tgz /tmp/tardis-machine.tgz
 
@@ -10,10 +8,9 @@ RUN mkdir /tmp/tardis-machine \
   && node --input-type=module --eval "await import('/tmp/tardis-machine/dist/index.js')" \
   && rm /tmp/tardis-machine.tgz
 
-FROM node:26.7.0-trixie-slim
+FROM node:26.7.0-bookworm-slim
 
 ENV NODE_ENV=production
-ENV UWS_HTTP_MAX_HEADERS_SIZE=20000
 ENV TM_CACHE_DIR=/.cache
 
 COPY --from=package /tmp/tardis-machine /opt/tardis-machine

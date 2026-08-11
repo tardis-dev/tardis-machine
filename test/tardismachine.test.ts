@@ -1,4 +1,4 @@
-import WebSocket from 'ws'
+import net from 'node:net'
 import { after, before, describe, test } from 'node:test'
 import { EXCHANGES, type FilterForExchange, getExchangeDetails } from 'tardis-dev'
 import type { TardisMachine as TardisMachineType } from '../dist/index.js'
@@ -39,7 +39,6 @@ describe('tardis-machine', () => {
   let tardisMachine: TardisMachineType
 
   before(async () => {
-    process.env.UWS_HTTP_MAX_HEADERS_SIZE = '20000'
     const { TardisMachine } = await import('../dist/index.js')
     tardisMachine = new TardisMachine({ cacheDir: './.cache' })
     await tardisMachine.start(PORT) // start server
@@ -65,6 +64,51 @@ describe('tardis-machine', () => {
 
     assert.equal(unknownRoute.status, 404)
     assert.equal(unsupportedMethod.status, 404)
+  })
+
+  test('releases the HTTP port when the WebSocket port is unavailable', async () => {
+    const blockedWebSocketPort = PORT + 21
+    const httpPort = blockedWebSocketPort - 1
+    const blocker = net.createServer()
+    await new Promise<void>((resolve) => blocker.listen(blockedWebSocketPort, resolve))
+
+    try {
+      const { TardisMachine } = await import('../dist/index.js')
+      const machine = new TardisMachine({ cacheDir: './.cache' })
+
+      await assert.rejects(machine.start(httpPort), (error: any) => error.code === 'EADDRINUSE')
+      await assert.rejects(fetch(`http://localhost:${httpPort}/health-check`))
+    } finally {
+      await new Promise<void>((resolve, reject) => blocker.close((error) => (error ? reject(error) : resolve())))
+    }
+  })
+
+  test('enforces WebSocket protocol limits without destabilizing the server', { timeout: 15_000 }, async () => {
+    const plainRequest = await fetch(`http://localhost:${PORT + 1}/`)
+    const acceptedLargeRequest = await fetch(`http://localhost:${PORT + 1}/${'x'.repeat(19_000)}`)
+    const rejectedOversizedRequest = await fetch(`http://localhost:${PORT + 1}/${'x'.repeat(21_000)}`)
+
+    assert.equal(plainRequest.status, 426)
+    assert.equal(acceptedLargeRequest.status, 426)
+    assert.equal(rejectedOversizedRequest.status, 431)
+
+    const unknownRoute = await waitForWebSocketClose(`ws://localhost:${PORT + 1}/unknown?padding=${'x'.repeat(18_000)}`)
+    assert.equal(unknownRoute.code, 1008)
+
+    const oversizedPayload = await waitForWebSocketClose(
+      `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-01T00:01:00Z`,
+      (socket) => socket.send('x'.repeat(512 * 1024 + 1))
+    )
+    assert.equal(oversizedPayload.code, 1009)
+
+    const unsupportedExchange = await waitForWebSocketClose(
+      `${WS_REPLAY_URL}?exchange=${'x'.repeat(200)}&from=2019-06-01&to=2019-06-01T00:01:00Z`
+    )
+    assert.equal(unsupportedExchange.code, 1011)
+    assert.ok(Buffer.byteLength(unsupportedExchange.reason) <= 123)
+
+    const healthCheckResponse = await fetch(`http://localhost:${PORT}/health-check`)
+    assert.equal(healthCheckResponse.status, 200)
   })
 
   describe('HTTP GET /replay-normalized', () => {
@@ -565,7 +609,7 @@ describe('tardis-machine', () => {
                 clearInterval(progressInterval)
                 clearTimeout(diagnosticTimeout)
                 ws.close()
-                resolve()
+                void ws.closed().then(resolve)
               }
             },
             () => {},
@@ -614,15 +658,15 @@ class SimpleWebsocketClient {
     onError: (error: Error) => void = () => {}
   ) {
     this._socket = new WebSocket(url)
-    this._socket.on('message', function (message: Buffer) {
-      onMessageCB(message.toString())
+    this._socket.binaryType = 'arraybuffer'
+    this._socket.addEventListener('message', (event) => onMessageCB(webSocketMessageToString(event.data)))
+    this._socket.addEventListener('open', onOpen)
+    this._socket.addEventListener('error', (event) => {
+      const error = new Error('WebSocket connection failed', { cause: event })
+      console.log('SimpleWebsocketClient Error', error)
+      onError(error)
     })
-    this._socket.on('open', onOpen)
-    this._socket.on('error', (err) => {
-      console.log('SimpleWebsocketClient Error', err)
-      onError(err)
-    })
-    this._socket.on('close', () => (this.isClosed = true))
+    this._socket.addEventListener('close', () => (this.isClosed = true))
   }
 
   public send(payload: any) {
@@ -638,4 +682,25 @@ class SimpleWebsocketClient {
       await new Promise((resolve) => setTimeout(resolve, 10))
     }
   }
+}
+
+function webSocketMessageToString(data: string | ArrayBuffer) {
+  return typeof data === 'string' ? data : Buffer.from(data).toString()
+}
+
+function waitForWebSocketClose(url: string, onOpen: (socket: WebSocket) => void = () => {}) {
+  return new Promise<{ code: number; reason: string }>((resolve, reject) => {
+    const socket = new WebSocket(url)
+    const timeout = setTimeout(() => {
+      socket.close()
+      reject(new Error(`Timed out waiting for WebSocket close: ${url.slice(0, 200)}`))
+    }, 10_000)
+
+    socket.addEventListener('open', () => onOpen(socket))
+    socket.addEventListener('error', () => {})
+    socket.addEventListener('close', (event) => {
+      clearTimeout(timeout)
+      resolve({ code: event.code, reason: event.reason })
+    })
+  })
 }

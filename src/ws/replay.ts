@@ -1,15 +1,15 @@
 import { decode } from 'node:querystring'
 import { combine, Exchange, replay, ReplayOptions } from 'tardis-dev'
-import type { HttpRequest } from 'uWebSockets.js'
 import { debug } from '../debug.ts'
 import { wait } from '../helpers.ts'
+import type { MachineWebSocket } from './server.ts'
 import { SubscriptionMapper, subscriptionsMappers } from './subscriptionsmappers.ts'
 
 const replaySessions: { [sessionKey: string]: ReplaySession | undefined } = {}
 let sessionsCounter = 0
 
-export function replayWS(ws: any, req: HttpRequest) {
-  const parsedQuery = decode(req.getQuery())
+export function replayWS(ws: MachineWebSocket, query: string) {
+  const parsedQuery = decode(query)
   const from = parsedQuery['from'] as string
   const to = parsedQuery['to'] as string
   const exchange = parsedQuery['exchange'] as Exchange
@@ -94,10 +94,12 @@ class ReplaySession {
         })
 
         for await (const { message } of messages) {
+          if (connection.ws.closed) break
+
           const success = connection.ws.send(message)
           // handle backpressure in case of slow clients
           if (!success) {
-            while (connection.ws.getBufferedAmount() > 0) {
+            while (!connection.ws.closed && connection.ws.getBufferedAmount() > 0) {
               await wait(1)
             }
           }
@@ -122,10 +124,13 @@ class ReplaySession {
         })
 
         for await (const { ws, message } of combine(...messagesWithConnections)) {
+          if (this._connections.every((connection) => connection.ws.closed)) break
+          if (ws.closed) continue
+
           const success = ws.send(message)
           // handle backpressure in case of slow clients
           if (!success) {
-            while (ws.getBufferedAmount() > 0) {
+            while (!ws.closed && ws.getBufferedAmount() > 0) {
               await wait(1)
             }
           }
@@ -155,7 +160,7 @@ class ReplaySession {
       }
 
       // let's wait until buffer is empty before closing normal connections
-      while (!error && connection.ws.getBufferedAmount() > 0) {
+      while (!error && !connection.ws.closed && connection.ws.getBufferedAmount() > 0) {
         await wait(100)
       }
 
@@ -174,7 +179,7 @@ class WebsocketConnection {
   public subscriptionsCount = 0
 
   constructor(
-    public readonly ws: any,
+    public readonly ws: MachineWebSocket,
     exchange: Exchange,
     from: string,
     to: string
@@ -212,7 +217,7 @@ class WebsocketConnection {
     return `${JSON.stringify(this.replayOptions)}`
   }
 
-  private _convertSubscribeRequestToFilter(messageRaw: ArrayBuffer) {
+  private _convertSubscribeRequestToFilter(messageRaw: Buffer) {
     const message = Buffer.from(messageRaw).toString()
     try {
       const messageDeserialized = JSON.parse(message)

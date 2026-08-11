@@ -1,5 +1,3 @@
-import WebSocket from 'ws'
-
 const serialize = (options) => {
   return encodeURIComponent(JSON.stringify(options))
 }
@@ -30,10 +28,11 @@ async function* responseLines(response) {
 class SimpleWebsocketClient {
   constructor(url, onMessageCB, onOpen) {
     this._socket = new WebSocket(url)
-    this._socket.on('open', onOpen)
-    this._socket.on('message', onMessageCB)
-    this._socket.on('error', (err) => {
-      console.log('SimpleWebsocketClient error', err)
+    this._socket.binaryType = 'arraybuffer'
+    this._socket.addEventListener('open', onOpen)
+    this._socket.addEventListener('message', (event) => onMessageCB(webSocketMessageToString(event.data)))
+    this._socket.addEventListener('error', (event) => {
+      console.log('SimpleWebsocketClient error', new Error('WebSocket connection failed', { cause: event }))
     })
   }
 
@@ -43,11 +42,15 @@ class SimpleWebsocketClient {
 
   async closed() {
     await new Promise((resolve) => {
-      this._socket.on('close', () => {
+      this._socket.addEventListener('close', () => {
         resolve()
       })
     })
   }
+}
+
+function webSocketMessageToString(data) {
+  return typeof data === 'string' ? data : Buffer.from(data).toString()
 }
 
 const EXCHANGE = 'bitmex'
