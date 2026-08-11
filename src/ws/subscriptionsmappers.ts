@@ -1,4 +1,4 @@
-import { Exchange, Filter } from 'tardis-dev'
+import type { Exchange, Filter } from 'tardis-dev'
 
 // https://www.bitmex.com/app/wsAPI
 const bitmexMapper: SubscriptionMapper = {

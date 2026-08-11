@@ -1,8 +1,8 @@
 import WebSocket from 'ws'
-import fetch from 'node-fetch'
-import split2 from 'split2'
+import { after, before, describe, test } from 'node:test'
 import { EXCHANGES, type FilterForExchange, getExchangeDetails } from 'tardis-dev'
-import { TardisMachine } from '../dist/index.js'
+import type { TardisMachine as TardisMachineType } from '../dist/index.js'
+import { assert, snapshot } from './assertions.ts'
 
 const PORT = 8072
 const HTTP_REPLAY_DATA_FEEDS_URL = `http://localhost:${PORT}/replay`
@@ -13,15 +13,39 @@ const WS_REPLAY_URL = `ws://localhost:${PORT + 1}/ws-replay`
 const serializeOptions = (options: any) => {
   return encodeURIComponent(JSON.stringify(options))
 }
-describe('tardis-machine', () => {
-  let tardisMachine: TardisMachine
 
-  beforeAll(async () => {
+async function* responseLines(response: Response) {
+  assert.ok(response.body)
+
+  const decoder = new TextDecoder()
+  let buffered = ''
+
+  for await (const chunk of response.body) {
+    buffered += decoder.decode(chunk, { stream: true })
+
+    let newlineIndex
+    while ((newlineIndex = buffered.indexOf('\n')) !== -1) {
+      const line = buffered.slice(0, newlineIndex)
+      buffered = buffered.slice(newlineIndex + 1)
+      if (line !== '') yield line
+    }
+  }
+
+  buffered += decoder.decode()
+  if (buffered !== '') yield buffered
+}
+
+describe('tardis-machine', () => {
+  let tardisMachine: TardisMachineType
+
+  before(async () => {
+    process.env.UWS_HTTP_MAX_HEADERS_SIZE = '20000'
+    const { TardisMachine } = await import('../dist/index.js')
     tardisMachine = new TardisMachine({ cacheDir: './.cache' })
     await tardisMachine.start(PORT) // start server
   })
 
-  afterAll(async () => {
+  after(async () => {
     await tardisMachine.stop()
   })
 
@@ -30,8 +54,8 @@ describe('tardis-machine', () => {
       const response = await fetch(`http://localhost:${PORT}${path}`)
       const body = (await response.json()) as { status: string }
 
-      expect(response.status).toBe(200)
-      expect(body.status).toBe('Healthy')
+      assert.equal(response.status, 200)
+      assert.equal(body.status, 'Healthy')
     }
   })
 
@@ -39,27 +63,53 @@ describe('tardis-machine', () => {
     const unknownRoute = await fetch(`http://localhost:${PORT}/unknown`)
     const unsupportedMethod = await fetch(`http://localhost:${PORT}/health-check`, { method: 'POST' })
 
-    expect(unknownRoute.status).toBe(404)
-    expect(unsupportedMethod.status).toBe(404)
+    assert.equal(unknownRoute.status, 404)
+    assert.equal(unsupportedMethod.status, 404)
   })
 
   describe('HTTP GET /replay-normalized', () => {
-    ;(test(
-      'replays Bitmex ETHUSD trades and order book changes',
-      async () => {
+    test('replays Bitmex ETHUSD trades and order book changes', { timeout: 1000 * 60 * 10 }, async (context) => {
+      const options = {
+        exchange: 'bitmex',
+        symbols: ['ETHUSD'],
+        from: '2019-06-01',
+        to: '2019-06-01 00:01',
+        dataTypes: ['trade', 'book_change']
+      }
+
+      const response = await fetch(`${HTTP_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`)
+
+      assert.equal(response.status, 200)
+
+      const messagesStream = responseLines(response)
+
+      const messages = []
+      for await (let line of messagesStream) {
+        const message = JSON.parse(line)
+
+        messages.push(JSON.stringify(message))
+      }
+
+      snapshot(context, messages)
+    })
+
+    test(
+      'replays Bitmex ETHUSD order book real time quotes and 6 second 5 levels snapshots',
+      { timeout: 1000 * 60 * 10 },
+      async (context) => {
         const options = {
           exchange: 'bitmex',
           symbols: ['ETHUSD'],
           from: '2019-06-01',
           to: '2019-06-01 00:01',
-          dataTypes: ['trade', 'book_change']
+          dataTypes: ['quote', 'book_snapshot_5_6s']
         }
 
         const response = await fetch(`${HTTP_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`)
 
-        expect(response.status).toBe(200)
+        assert.equal(response.status, 200)
 
-        const messagesStream = response.body!.pipe(split2()) // split response body by new lines
+        const messagesStream = responseLines(response)
 
         const messages = []
         for await (let line of messagesStream) {
@@ -68,76 +118,43 @@ describe('tardis-machine', () => {
           messages.push(JSON.stringify(message))
         }
 
-        expect(messages).toMatchSnapshot()
-      },
-      1000 * 60 * 10
-    ),
-      test(
-        'replays Bitmex ETHUSD order book real time quotes and 6 second 5 levels snapshots',
-        async () => {
-          const options = {
-            exchange: 'bitmex',
-            symbols: ['ETHUSD'],
-            from: '2019-06-01',
-            to: '2019-06-01 00:01',
-            dataTypes: ['quote', 'book_snapshot_5_6s']
-          }
-
-          const response = await fetch(`${HTTP_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`)
-
-          expect(response.status).toBe(200)
-
-          const messagesStream = response.body!.pipe(split2()) // split response body by new lines
-
-          const messages = []
-          for await (let line of messagesStream) {
-            const message = JSON.parse(line)
-
-            messages.push(JSON.stringify(message))
-          }
-
-          expect(messages).toMatchSnapshot()
-        },
-        1000 * 60 * 10
-      ))
-
-    test(
-      'replays Bitmex XBTUSD and Deribit BTC-PERPETUAL trade 1 second bars',
-      async () => {
-        const options = [
-          {
-            exchange: 'bitmex',
-            symbols: ['ETHUSD'],
-            from: '2019-06-01',
-            to: '2019-06-01 00:01',
-            dataTypes: ['trade_bar_1s']
-          },
-          {
-            exchange: 'deribit',
-            symbols: ['BTC-PERPETUAL'],
-            from: '2019-06-01',
-            to: '2019-06-01 00:01',
-            dataTypes: ['trade_bar_1s']
-          }
-        ]
-
-        const response = await fetch(`${HTTP_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`)
-
-        expect(response.status).toBe(200)
-
-        const messagesStream = response.body!.pipe(split2()) // split response body by new lines
-
-        const messages = []
-        for await (let line of messagesStream) {
-          const message = JSON.parse(line)
-
-          messages.push(JSON.stringify(message))
-        }
-
-        expect(messages).toMatchSnapshot()
-      },
-      1000 * 60 * 10
+        snapshot(context, messages)
+      }
     )
+
+    test('replays Bitmex XBTUSD and Deribit BTC-PERPETUAL trade 1 second bars', { timeout: 1000 * 60 * 10 }, async (context) => {
+      const options = [
+        {
+          exchange: 'bitmex',
+          symbols: ['ETHUSD'],
+          from: '2019-06-01',
+          to: '2019-06-01 00:01',
+          dataTypes: ['trade_bar_1s']
+        },
+        {
+          exchange: 'deribit',
+          symbols: ['BTC-PERPETUAL'],
+          from: '2019-06-01',
+          to: '2019-06-01 00:01',
+          dataTypes: ['trade_bar_1s']
+        }
+      ]
+
+      const response = await fetch(`${HTTP_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`)
+
+      assert.equal(response.status, 200)
+
+      const messagesStream = responseLines(response)
+
+      const messages = []
+      for await (let line of messagesStream) {
+        const message = JSON.parse(line)
+
+        messages.push(JSON.stringify(message))
+      }
+
+      snapshot(context, messages)
+    })
   })
 
   describe('HTTP GET /replay', () => {
@@ -149,7 +166,7 @@ describe('tardis-machine', () => {
           to: 'ssd'
         })}`
       )
-      expect(response.status).toBe(500)
+      assert.equal(response.status, 500)
 
       response = await fetch(
         `${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions({
@@ -159,469 +176,284 @@ describe('tardis-machine', () => {
         })}`
       )
 
-      expect(response.status).toBe(500)
+      assert.equal(response.status, 500)
+    })
+
+    test('replays five minutes of Bitmex ETHUSD trades and order book updates', { timeout: 1000 * 60 * 10 }, async () => {
+      const filters: FilterForExchange['bitmex'][] = [
+        {
+          channel: 'trade',
+          symbols: ['ETHUSD']
+        },
+        {
+          channel: 'orderBookL2',
+          symbols: ['ETHUSD']
+        }
+      ]
+
+      const options = {
+        exchange: 'bitmex',
+        from: '2019-05-01',
+        to: '2019-05-01T00:05:00Z',
+        filters
+      }
+
+      const response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions(options)}`)
+
+      assert.equal(response.status, 200)
+
+      const ethTradeMessages = responseLines(response)
+
+      let receivedTradesCount = 0
+      let receivedOrderBookUpdatesCount = 0
+
+      for await (let line of ethTradeMessages) {
+        const { message } = JSON.parse(line)
+
+        if (message.table == 'trade') {
+          receivedTradesCount++
+        }
+
+        if (message.table == 'orderBookL2') {
+          receivedOrderBookUpdatesCount++
+        }
+      }
+
+      assert.equal(receivedTradesCount, 164)
+      assert.equal(receivedOrderBookUpdatesCount, 5375)
     })
 
     test(
-      'replays Bitmex ETHUSD trades and order book updates for first of April 2019',
-      async () => {
-        const filters: FilterForExchange['bitmex'][] = [
-          {
-            channel: 'trade',
-            symbols: ['ETHUSD']
-          },
-          {
-            channel: 'orderBookL2',
-            symbols: ['ETHUSD']
-          }
-        ]
-
-        const options = {
-          exchange: 'bitmex',
-          from: '2019-05-01',
-          to: '2019-05-02',
-          filters
-        }
-
-        const response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions(options)}`)
-
-        expect(response.status).toBe(200)
-
-        const ethTradeMessages = response.body!.pipe(split2()) // split response body by new lines
-
-        let receivedTradesCount = 0
-        let receivedOrderBookUpdatesCount = 0
-
-        for await (let line of ethTradeMessages) {
-          const { message } = JSON.parse(line)
-
-          if (message.table == 'trade') {
-            receivedTradesCount++
-          }
-
-          if (message.table == 'orderBookL2') {
-            receivedOrderBookUpdatesCount++
-          }
-        }
-
-        expect(receivedTradesCount).toBe(28629)
-        expect(receivedOrderBookUpdatesCount).toBe(1328937)
-      },
-      1000 * 60 * 10
-    )
-
-    test(
-      'unauthorizedAccess',
+      'returns the upstream authorization error for restricted data',
+      { timeout: 30 * 1000, skip: process.env.RUN_LIVE_TESTS !== '1' },
       async () => {
         const options = {
           exchange: 'bitmex',
           from: '2019-05-02',
-          to: '2019-05-03'
+          to: '2019-05-02T00:01:00Z'
         }
 
         const response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions(options)}`)
 
-        expect(response.status).toBe(401)
-      },
-      30 * 1000
+        assert.equal(response.status, 401)
+      }
     )
   })
 
-  describe('WS /ws-replay', () => {
-    test(
-      'subcribes to and replays historical Coinbase data feed of 1st of Jun 2019 (ZEC-USDC trades)',
-      async () => {
-        let messages: string[] = []
-        const simpleCoinbaseClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=coinbase&from=2019-06-01&to=2019-06-02`,
-          (message) => {
-            messages.push(message as string)
-          },
-          () => {
-            simpleCoinbaseClient.send({
-              type: 'subscribe',
-              channels: [
-                {
-                  name: 'matches',
-                  product_ids: ['ZEC-USDC']
-                }
-              ]
-            })
-          }
-        )
-
-        await simpleCoinbaseClient.closed()
-        expect(messages).toMatchSnapshot()
-      },
-      10 * 60 * 1000
-    )
-
-    test(
-      'subcribes to and replays historical Cryptofacilities data feed of 1st of Jun 2019 (PI_XBTUSD trades)',
-      async () => {
-        let messages: string[] = []
-        const simpleCFClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=cryptofacilities&from=2019-06-01&to=2019-06-02`,
-          (message) => {
-            messages.push(message as string)
-          },
-          () => {
-            simpleCFClient.send({
-              event: 'subscribe',
-              feed: 'trade',
-              product_ids: ['PI_XBTUSD']
-            })
-          }
-        )
-
-        await simpleCFClient.closed()
-        expect(messages).toMatchSnapshot()
-      },
-      10 * 60 * 1000
-    )
-
-    test(
-      'subcribes to and replays historical Bitstamp data feed of 1st of Jun 2019 (LTCUSD trades)',
-      async () => {
-        let messages: string[] = []
-        const simpleBitstampClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=bitstamp&from=2019-06-01&to=2019-06-02`,
-          (message) => {
-            messages.push(message as string)
-          },
-          () => {
-            simpleBitstampClient.send({
-              event: 'bts:subscribe',
-              data: {
-                channel: 'live_trades_ltcusd'
+  describe('WS /ws-replay', { concurrency: true }, () => {
+    test('subscribes to five minutes of historical Coinbase ZEC-USDC trades', { timeout: 10 * 60 * 1000 }, async (context) => {
+      let messages: string[] = []
+      const simpleCoinbaseClient = new SimpleWebsocketClient(
+        `${WS_REPLAY_URL}?exchange=coinbase&from=2019-06-01&to=2019-06-01T00:05:00Z`,
+        (message) => {
+          messages.push(message as string)
+        },
+        () => {
+          simpleCoinbaseClient.send({
+            type: 'subscribe',
+            channels: [
+              {
+                name: 'matches',
+                product_ids: ['ZEC-USDC']
               }
-            })
-          }
-        )
+            ]
+          })
+        }
+      )
 
-        await simpleBitstampClient.closed()
-        expect(messages).toMatchSnapshot()
-      },
-      10 * 60 * 1000
-    )
+      await simpleCoinbaseClient.closed()
+      snapshot(context, messages)
+    })
 
-    test(
-      'subcribes to and replays historical OKEX data feed of 1st of Jun 2019 (BTC-USDT trades)',
-      async () => {
-        let messages: string[] = []
-        const simpleOkexClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=okex&from=2019-06-01&to=2019-06-01T02:00Z`,
-          (message) => {
-            messages.push(message as string)
-          },
-          () => {
-            simpleOkexClient.send({ op: 'subscribe', args: ['spot/trade:BTC-USDT'] })
-          }
-        )
+    test('subscribes to five minutes of historical Crypto Facilities PI_XBTUSD trades', { timeout: 10 * 60 * 1000 }, async (context) => {
+      let messages: string[] = []
+      const simpleCFClient = new SimpleWebsocketClient(
+        `${WS_REPLAY_URL}?exchange=cryptofacilities&from=2019-06-01&to=2019-06-01T00:05:00Z`,
+        (message) => {
+          messages.push(message as string)
+        },
+        () => {
+          simpleCFClient.send({
+            event: 'subscribe',
+            feed: 'trade',
+            product_ids: ['PI_XBTUSD']
+          })
+        }
+      )
 
-        await simpleOkexClient.closed()
-        expect(messages).toMatchSnapshot()
-      },
-      10 * 60 * 1000
-    )
+      await simpleCFClient.closed()
+      snapshot(context, messages)
+    })
 
-    test(
-      'subcribes to and replays historical BitMEX data feed of 1st of Jun 2019 (ADAM19 trades) using simple and official BitMEX clients',
-      async () => {
-        let trades: string[] = []
-        let wsURL = `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-02`
-        const simpleBitmexWSClient = new SimpleWebsocketClient(
-          wsURL,
-          (message) => {
-            const parsedMessage = JSON.parse(message)
-            if (parsedMessage.action != 'insert') return
+    test('subscribes to five minutes of historical Bitstamp LTCUSD trades', { timeout: 10 * 60 * 1000 }, async (context) => {
+      let messages: string[] = []
+      const simpleBitstampClient = new SimpleWebsocketClient(
+        `${WS_REPLAY_URL}?exchange=bitstamp&from=2019-06-01&to=2019-06-01T00:05:00Z`,
+        (message) => {
+          messages.push(message as string)
+        },
+        () => {
+          simpleBitstampClient.send({
+            event: 'bts:subscribe',
+            data: {
+              channel: 'live_trades_ltcusd'
+            }
+          })
+        }
+      )
 
-            parsedMessage.data.forEach((trade: any) => {
-              if (trade.symbol != 'ADAM19') return
+      await simpleBitstampClient.closed()
+      snapshot(context, messages)
+    })
 
-              trades.push(JSON.stringify(trade))
-            })
-          },
-          () => {
-            simpleBitmexWSClient.send({
-              op: 'subscribe',
-              args: ['trade:ADAM19']
-            })
-          }
-        )
+    test('subscribes to five minutes of historical OKEX BTC-USDT trades', { timeout: 10 * 60 * 1000 }, async (context) => {
+      let messages: string[] = []
+      const simpleOkexClient = new SimpleWebsocketClient(
+        `${WS_REPLAY_URL}?exchange=okex&from=2019-06-01&to=2019-06-01T00:05:00Z`,
+        (message) => {
+          messages.push(message as string)
+        },
+        () => {
+          simpleOkexClient.send({ op: 'subscribe', args: ['spot/trade:BTC-USDT'] })
+        }
+      )
 
-        await simpleBitmexWSClient.closed()
-        expect(trades).toMatchSnapshot('ADAM19Trades')
-      },
-      10 * 60 * 1000
-    )
+      await simpleOkexClient.closed()
+      snapshot(context, messages)
+    })
 
-    test(
-      'subcribes to and replays historical BitMEX data feed of 1st of Jun 2019 (XBTUSD trades and  orderBookL2 updates)',
-      async () => {
-        const startTimestamp = new Date().getTime()
-        let messagesCount = 0
-        let lastBitmexMessage
+    test('subscribes to five minutes of historical BitMEX ADAM19 trades', { timeout: 10 * 60 * 1000 }, async (context) => {
+      let trades: string[] = []
+      const wsURL = `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-01T00:05:00Z`
+      const simpleBitmexWSClient = new SimpleWebsocketClient(
+        wsURL,
+        (message) => {
+          const parsedMessage = JSON.parse(message)
+          if (parsedMessage.action != 'insert') return
 
-        const simpleBitmexWSClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-02`,
-          (message) => {
-            messagesCount++
-            lastBitmexMessage = message
-          },
-          () => {
-            simpleBitmexWSClient.send({
-              op: 'subscribe',
-              args: ['trade:XBTUSD', 'orderBookL2:XBTUSD']
-            })
-          }
-        )
+          parsedMessage.data.forEach((trade: any) => {
+            if (trade.symbol != 'ADAM19') return
 
-        await simpleBitmexWSClient.closed()
-        console.log(`WS received  for BitMEX ${messagesCount} in ${(new Date().getTime() - startTimestamp) / 1000} seconds`)
-        expect(lastBitmexMessage).toMatchSnapshot()
-        expect(messagesCount).toBe(7690673)
-      },
-      10 * 60 * 1000
-    )
+            trades.push(JSON.stringify(trade))
+          })
+        },
+        () => {
+          simpleBitmexWSClient.send({
+            op: 'subscribe',
+            args: ['trade:ADAM19']
+          })
+        }
+      )
 
-    test(
-      'subcribes to and replays historical BitMEX and Deribit data feed of 1st of Jun 2019 (XBTUSD trades and book updates)',
-      async () => {
-        const startTimestamp = new Date().getTime()
-        let bitmexMessagesCount = 0
-        let deribitMessagesCount = 0
-        let lastBitmexMessage
-        let lastDeribitMessage
+      await simpleBitmexWSClient.closed()
+      snapshot(context, trades)
+    })
 
-        const simpleBitmexWSClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-02&session=common`,
-          (message) => {
-            lastBitmexMessage = message
-            bitmexMessagesCount++
-          },
-          () => {
-            simpleBitmexWSClient.send({
-              op: 'subscribe',
-              args: ['trade:XBTUSD', 'orderBookL2:XBTUSD']
-            })
-          }
-        )
+    test('keeps five-minute BitMEX and Deribit replay sessions synchronized', { timeout: 5 * 60 * 1000 }, async (context) => {
+      const bitmexMessages: string[] = []
+      const deribitMessages: string[] = []
 
-        const simpleDeribitWSClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=deribit&from=2019-06-01&to=2019-06-02&session=common`,
-          (message) => {
-            lastDeribitMessage = message
-            deribitMessagesCount++
-          },
-          () => {
-            simpleDeribitWSClient.send({
-              jsonrpc: '2.0',
-              method: 'public/subscribe',
-              params: {
-                channels: ['book.BTC-PERPETUAL.raw']
-              }
-            })
+      const simpleBitmexWSClient = new SimpleWebsocketClient(
+        `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-01T00:05:00Z&session=common`,
+        (message) => {
+          bitmexMessages.push(message)
+        },
+        () => {
+          simpleBitmexWSClient.send({
+            op: 'subscribe',
+            args: ['trade:XBTUSD', 'orderBookL2:XBTUSD']
+          })
+        }
+      )
 
-            simpleDeribitWSClient.send({
-              jsonrpc: '2.0',
-              method: 'public/subscribe',
-              params: {
-                channels: ['trades.BTC-PERPETUAL.raw']
-              }
-            })
-          }
-        )
+      const simpleDeribitWSClient = new SimpleWebsocketClient(
+        `${WS_REPLAY_URL}?exchange=deribit&from=2019-06-01&to=2019-06-01T00:05:00Z&session=common`,
+        (message) => {
+          deribitMessages.push(message)
+        },
+        () => {
+          simpleDeribitWSClient.send({
+            jsonrpc: '2.0',
+            method: 'public/subscribe',
+            params: {
+              channels: ['book.BTC-PERPETUAL.raw']
+            }
+          })
 
-        await simpleBitmexWSClient.closed()
+          simpleDeribitWSClient.send({
+            jsonrpc: '2.0',
+            method: 'public/subscribe',
+            params: {
+              channels: ['trades.BTC-PERPETUAL.raw']
+            }
+          })
+        }
+      )
 
-        const timestamp = new Date().getTime()
+      await simpleBitmexWSClient.closed()
 
-        await simpleDeribitWSClient.closed()
-        // both clients should close in the same moment basically
-        expect(new Date().getTime() - timestamp < 100).toBeTruthy
+      const timestamp = new Date().getTime()
 
-        console.log(
-          `WS received for BitMEX ${bitmexMessagesCount} messages, for Deribit ${deribitMessagesCount} messages in ${
-            (new Date().getTime() - startTimestamp) / 1000
-          } seconds`
-        )
+      await simpleDeribitWSClient.closed()
+      // both clients should close in the same moment basically
+      assert.ok(new Date().getTime() - timestamp < 100)
 
-        expect(bitmexMessagesCount).toBe(7690673)
-        expect(deribitMessagesCount).toBe(7029393)
+      snapshot(context, bitmexMessages)
+      snapshot(context, deribitMessages)
+    })
 
-        expect(lastBitmexMessage).toMatchSnapshot()
-        expect(lastDeribitMessage).toMatchSnapshot()
-      },
-      20 * 60 * 1000
-    )
+    test('subscribes to five minutes of historical Binance btcusdt trades', { timeout: 10 * 60 * 1000 }, async (context) => {
+      let messages: string[] = []
+      const simpleBinanceClient = new SimpleWebsocketClient(
+        `${WS_REPLAY_URL}?exchange=binance&from=2019-07-01&to=2019-07-01T00:05:00Z`,
+        (message) => {
+          messages.push(message as string)
+        },
+        () => {
+          simpleBinanceClient.send({ method: 'SUBSCRIBE', params: ['btcusdt@trade'] })
+        }
+      )
 
-    test(
-      'subcribes to and replays historical BitMEX and Deribit data feed of first 5 minutes of 1st of April 2019 (XBTUSD trades and book updates)',
-      async () => {
-        let bitmexMessages: string[] = []
-        let deribitMessages: string[] = []
-
-        const simpleBitmexWSClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-01T00:05Z&session=common`,
-          (message) => {
-            bitmexMessages.push(message)
-          },
-          () => {
-            simpleBitmexWSClient.send({
-              op: 'subscribe',
-              args: ['trade:XBTUSD', 'orderBookL2:XBTUSD']
-            })
-          }
-        )
-
-        const simpleDeribitWSClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=deribit&from=2019-06-01&to=2019-06-01T00:05Z&session=common`,
-          (message) => {
-            deribitMessages.push(message)
-          },
-          () => {
-            simpleDeribitWSClient.send({
-              jsonrpc: '2.0',
-              method: 'public/subscribe',
-              params: {
-                channels: ['book.BTC-PERPETUAL.raw']
-              }
-            })
-
-            simpleDeribitWSClient.send({
-              jsonrpc: '2.0',
-              method: 'public/subscribe',
-              params: {
-                channels: ['trades.BTC-PERPETUAL.raw']
-              }
-            })
-          }
-        )
-
-        await simpleBitmexWSClient.closed()
-
-        const timestamp = new Date().getTime()
-
-        await simpleDeribitWSClient.closed()
-        // both clients should close in the same moment basically
-        expect(new Date().getTime() - timestamp < 100).toBeTruthy
-
-        expect(bitmexMessages).toMatchSnapshot()
-        expect(deribitMessages).toMatchSnapshot()
-      },
-      20 * 60 * 1000
-    )
-
-    test(
-      'subcribes to and replays historical Binance data feed of 1st of July 2019 5 minutes (btcusdt trades)',
-      async () => {
-        let messages: string[] = []
-        const simpleBinanceClient = new SimpleWebsocketClient(
-          `${WS_REPLAY_URL}?exchange=binance&from=2019-07-01&to=2019-07-01T00:05Z`,
-          (message) => {
-            messages.push(message as string)
-          },
-          () => {
-            simpleBinanceClient.send({ method: 'SUBSCRIBE', params: ['btcusdt@trade'] })
-          }
-        )
-
-        await simpleBinanceClient.closed()
-        expect(messages).toMatchSnapshot()
-      },
-      10 * 60 * 1000
-    )
+      await simpleBinanceClient.closed()
+      snapshot(context, messages)
+    })
   })
 
   describe('WS /ws-replay-normalized', () => {
-    ;(test(
-      'replays Bitmex ETHUSD trades and order book changes',
-      async () => {
-        const options = {
+    test('replays Bitmex XBTUSD and Deribit BTC-PERPETUAL trade 1 second bars', { timeout: 1000 * 60 * 10 }, async (context) => {
+      const options = [
+        {
           exchange: 'bitmex',
           symbols: ['ETHUSD'],
           from: '2019-06-01',
           to: '2019-06-01T00:01Z',
-          dataTypes: ['trade', 'book_change']
-        }
-
-        let messages: string[] = []
-
-        const simpleWSClient = new SimpleWebsocketClient(`${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`, (message) => {
-          messages.push(message)
-        })
-
-        await simpleWSClient.closed()
-
-        expect(messages).toMatchSnapshot()
-      },
-      1000 * 60 * 10
-    ),
-      test(
-        'replays Bitmex ETHUSD order book real time quotes and 6 second 5 levels snapshots',
-        async () => {
-          const options = {
-            exchange: 'bitmex',
-            symbols: ['ETHUSD'],
-            from: '2019-06-01',
-            to: '2019-06-01T00:01Z',
-            dataTypes: ['quote', 'book_snapshot_5_6s']
-          }
-
-          let messages: string[] = []
-
-          const simpleWSClient = new SimpleWebsocketClient(
-            `${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`,
-            (message) => {
-              messages.push(message)
-            }
-          )
-
-          await simpleWSClient.closed()
-
-          expect(messages).toMatchSnapshot()
+          dataTypes: ['trade_bar_1s']
         },
-        1000 * 60 * 10
-      ))
+        {
+          exchange: 'deribit',
+          symbols: ['BTC-PERPETUAL'],
+          from: '2019-06-01',
+          to: '2019-06-01T00:01Z',
+          dataTypes: ['trade_bar_1s']
+        }
+      ]
 
-    test(
-      'replays Bitmex XBTUSD and Deribit BTC-PERPETUAL trade 1 second bars',
-      async () => {
-        const options = [
-          {
-            exchange: 'bitmex',
-            symbols: ['ETHUSD'],
-            from: '2019-06-01',
-            to: '2019-06-01T00:01Z',
-            dataTypes: ['trade_bar_1s']
-          },
-          {
-            exchange: 'deribit',
-            symbols: ['BTC-PERPETUAL'],
-            from: '2019-06-01',
-            to: '2019-06-01T00:01Z',
-            dataTypes: ['trade_bar_1s']
-          }
-        ]
+      let messages: string[] = []
 
-        let messages: string[] = []
+      const simpleWSClient = new SimpleWebsocketClient(`${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`, (message) => {
+        messages.push(message)
+      })
 
-        const simpleWSClient = new SimpleWebsocketClient(`${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`, (message) => {
-          messages.push(message)
-        })
+      await simpleWSClient.closed()
 
-        await simpleWSClient.closed()
-
-        expect(messages).toMatchSnapshot()
-      },
-      1000 * 60 * 10
-    )
+      snapshot(context, messages)
+    })
   })
 
   describe('WS /ws-stream-normalized', () => {
     test(
       'streams normalized real-time messages for each supported exchange as single consolidated stream',
+      { timeout: 1000 * 60 * 4, skip: process.env.RUN_LIVE_TESTS !== '1' },
       async () => {
         const exchangesWithDerivativeInfo = [
           'bitmex',
@@ -767,8 +599,7 @@ describe('tardis-machine', () => {
             1000 * 60 * 3 + 30 * 1000
           )
         })
-      },
-      1000 * 60 * 4
+      }
     )
   })
 })

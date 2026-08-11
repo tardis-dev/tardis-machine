@@ -31,7 +31,8 @@
   "homepage": "https://github.com/tardis-dev/tardis-machine",
   "scripts": {
     "build": "tsc",
-    "test": "npm run build && cross-env UWS_HTTP_MAX_HEADERS_SIZE=20000 node --experimental-vm-modules ./node_modules/jest/bin/jest.js --forceExit --runInBand",
+    "test": "npm run build && tsc -p test/tsconfig.json && node --test test/*.test.ts",
+    "test:update-snapshots": "npm run build && tsc -p test/tsconfig.json && node --test --test-update-snapshots test/*.test.ts",
     "prepare": "npm run build",
     "format": "prettier --write .",
     "check-format": "prettier --check .",
@@ -81,36 +82,10 @@
   "bundleDependencies": true,
   "devDependencies": {
     "@types/debug": "^4.1.12",
-    "@types/jest": "^30.0.0",
     "@types/node": "^26.1.2",
-    "@types/node-fetch": "^2.6.13",
-    "@types/split2": "^4.2.3",
     "@types/ws": "^8.18.1",
-    "cross-env": "^10.1.0",
-    "jest": "^30.0.5",
-    "node-fetch": "^2.6.1",
     "prettier": "^3.8.3",
-    "split2": "^4.2.0",
-    "ts-jest": "^29.4.0",
-    "typescript": "^5.9.2",
+    "typescript": "^6.0.3",
     "ws": "^8.18.3"
-  },
-  "jest": {
-    "extensionsToTreatAsEsm": [
-      ".ts"
-    ],
-    "moduleNameMapper": {
-      "^(\\.{1,2}/.*)\\.js$": "$1"
-    },
-    "transform": {
-      "\\.(ts|tsx)?$": [
-        "ts-jest",
-        {
-          "useESM": true,
-          "tsconfig": "./test/tsconfig.json"
-        }
-      ]
-    },
-    "testEnvironment": "node"
   }
 }

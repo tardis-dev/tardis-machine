@@ -132,6 +132,8 @@ export class TardisMachine {
   }
 
   public async stop() {
+    this._wsServer.close()
+
     await new Promise<void>((resolve, reject) => {
       this._httpServer.close((err) => {
         err ? reject(err) : resolve()

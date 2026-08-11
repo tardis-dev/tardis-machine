@@ -8,9 +8,12 @@ Use the Node.js version from `.nvmrc` and its bundled npm.
 
 ```bash
 npm run build          # tsc
-npm test               # build + jest
+npm test               # build + type-check tests + node:test
+npm run test:update-snapshots
 npm run check-format   # prettier check
 ```
+
+The default suite uses five-minute raw and one-minute normalized historical replays. Keep complete raw WebSocket snapshots because they are regression coverage for the public replay protocol. Set `RUN_LIVE_TESTS=1` to include upstream authorization and broad real-time exchange diagnostics.
 
 ## Editing Rules
 

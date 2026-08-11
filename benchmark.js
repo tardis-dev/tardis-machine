@@ -1,12 +1,30 @@
-import { createRequire } from 'node:module'
-
-const require = createRequire(import.meta.url)
-const fetch = require('node-fetch')
-const split2 = require('split2')
-const WebSocket = require('ws')
+import WebSocket from 'ws'
 
 const serialize = (options) => {
   return encodeURIComponent(JSON.stringify(options))
+}
+
+async function* responseLines(response) {
+  if (response.body === null) {
+    throw new Error('Response does not have a body')
+  }
+
+  const decoder = new TextDecoder()
+  let buffered = ''
+
+  for await (const chunk of response.body) {
+    buffered += decoder.decode(chunk, { stream: true })
+
+    let newlineIndex
+    while ((newlineIndex = buffered.indexOf('\n')) !== -1) {
+      const line = buffered.slice(0, newlineIndex)
+      buffered = buffered.slice(newlineIndex + 1)
+      if (line !== '') yield line
+    }
+  }
+
+  buffered += decoder.decode()
+  if (buffered !== '') yield buffered
 }
 
 class SimpleWebsocketClient {
@@ -64,7 +82,7 @@ async function httpReplayBenchmark({ JSONParseResponse }) {
   }
 
   const response = await fetch(`http://localhost:8000/replay?options=${serialize(options)}`)
-  const messagesStream = response.body.pipe(split2())
+  const messagesStream = responseLines(response)
 
   let messagesCount = 0
   let startTime = new Date()
@@ -100,7 +118,7 @@ async function httpReplayNormalizedBenchmark({ computeTBTBookSnapshots }) {
   }
 
   const response = await fetch(`http://localhost:8000/replay-normalized?options=${serialize(options)}`)
-  const messagesStream = response.body.pipe(split2())
+  const messagesStream = responseLines(response)
 
   let messagesCount = 0
   let startTime = new Date()
