@@ -3,6 +3,15 @@ import { subscriptionsMappers } from '../src/ws/subscriptionsmappers.ts'
 import { assert } from './assertions.ts'
 
 describe('subscriptions mappers', () => {
+  test('maps Bybit options order book subscriptions with their depth', () => {
+    const mapper = subscriptionsMappers['bybit-options']
+    const date = new Date()
+    const message = { op: 'subscribe', args: ['orderbook.25.BTC-1AUG25-112000-P-USDT'] }
+
+    assert.equal(mapper.canHandle(message, date), true)
+    assert.deepEqual(mapper.map(message, date), [{ channel: 'orderbook.25', symbols: ['BTC-1AUG25-112000-P-USDT'] }])
+  })
+
   test('maps Hyperliquid fast book subscriptions', () => {
     const mapper = subscriptionsMappers.hyperliquid
     const date = new Date()

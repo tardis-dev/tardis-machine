@@ -274,7 +274,7 @@ const bybitMapper: SubscriptionMapper = {
       const pieces = arg.split('.')
 
       return {
-        channel: pieces[0],
+        channel: pieces.slice(0, -1).join('.'),
         symbols: [pieces[pieces.length - 1]]
       }
     })
