@@ -806,6 +806,8 @@ export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
   kraken: krakenMapper,
   bitflyer: bitflyerMapper,
   gemini: geminiMapper,
+  aster: binanceMapper,
+  'aster-futures': binanceMapper,
   binance: binanceMapper,
   'binance-futures': binanceMapper,
   'binance-delivery': binanceMapper,

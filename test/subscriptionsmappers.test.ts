@@ -3,6 +3,26 @@ import { subscriptionsMappers } from '../src/ws/subscriptionsmappers.ts'
 import { assert } from './assertions.ts'
 
 describe('subscriptions mappers', () => {
+  test('maps Aster Spot and Futures subscriptions', () => {
+    const date = new Date()
+    const spotMapper = subscriptionsMappers.aster
+    const futuresMapper = subscriptionsMappers['aster-futures']
+
+    const spotMessage = { method: 'SUBSCRIBE', params: ['btcusdt@trade', 'btcusdt@depth@0ms'] }
+    assert.equal(spotMapper.canHandle(spotMessage, date), true)
+    assert.deepEqual(spotMapper.map(spotMessage, date), [
+      { channel: 'trade', symbols: ['btcusdt'] },
+      { channel: 'depth', symbols: ['btcusdt'] }
+    ])
+
+    const futuresMessage = { method: 'SUBSCRIBE', params: ['btcusdt@markPrice@1s', 'btcusd@assetIndex'] }
+    assert.equal(futuresMapper.canHandle(futuresMessage, date), true)
+    assert.deepEqual(futuresMapper.map(futuresMessage, date), [
+      { channel: 'markPrice', symbols: ['btcusdt'] },
+      { channel: 'assetIndex', symbols: ['btcusd'] }
+    ])
+  })
+
   test('maps Bybit options order book subscriptions with their depth', () => {
     const mapper = subscriptionsMappers['bybit-options']
     const date = new Date()
