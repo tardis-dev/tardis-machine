@@ -77,12 +77,12 @@
   "dependencies": {
     "debug": "^4.4.3",
     "tardis-dev": "^18.2.0",
-    "ws": "^8.21.1"
+    "ws": "^8.21.3"
   },
   "bundleDependencies": true,
   "devDependencies": {
     "@types/debug": "^4.1.12",
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.2.0",
     "@types/ws": "^8.18.1",
     "prettier": "3.9.6",
     "typescript": "^6.0.3"
