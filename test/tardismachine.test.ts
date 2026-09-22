@@ -495,12 +495,24 @@ describe('tardis-machine', () => {
   })
 
   describe('WS /ws-stream-normalized', () => {
+    test('rejects retired BitMEX streaming without destabilizing the server', { timeout: 5000 }, async () => {
+      const options = { exchange: 'bitmex', symbols: ['XBTUSD'], dataTypes: ['trade'] }
+      const closed = await waitForWebSocketClose(`ws://localhost:${PORT + 1}/ws-stream-normalized?options=${serializeOptions(options)}`)
+
+      assert.equal(closed.code, 1011)
+      assert.match(closed.reason, /Real-time streaming is not supported for exchange bitmex/)
+
+      const healthCheckResponse = await fetch(`http://localhost:${PORT}/health-check`)
+      const health = (await healthCheckResponse.json()) as { status: string }
+      assert.equal(healthCheckResponse.status, 200)
+      assert.equal(health.status, 'Healthy')
+    })
+
     test(
       'streams normalized real-time messages for each supported exchange as single consolidated stream',
       { timeout: 1000 * 60 * 4, skip: process.env.RUN_LIVE_TESTS !== '1' },
       async () => {
         const exchangesWithDerivativeInfo = [
-          'bitmex',
           'binance-futures',
           'bitfinex-derivatives',
           'cryptofacilities',
@@ -519,6 +531,7 @@ describe('tardis-machine', () => {
           'coinflex'
         ]
         const excludedExchanges = new Set([
+          'bitmex',
           'binance-dex',
           'binance-jersey',
           'coinbase-international',
