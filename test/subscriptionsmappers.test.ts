@@ -108,6 +108,64 @@ describe('subscriptions mappers', () => {
     ])
   })
 
+  test('maps Lighter RH subscriptions', () => {
+    const mapper = subscriptionsMappers['lighter-rh']
+    const date = new Date()
+
+    assert.equal(mapper.canHandle({ type: 'subscribe', channel: 'order_book/0' }, date), true)
+    assert.deepEqual(mapper.map({ type: 'subscribe', channel: 'order_book/0' }, date), [{ channel: 'order_book', symbols: ['0'] }])
+    assert.deepEqual(mapper.map({ type: 'subscribe', channel: 'ticker/2048' }, date), [{ channel: 'ticker', symbols: ['2048'] }])
+    assert.deepEqual(mapper.map({ type: 'subscribe', channel: 'market_stats/all' }, date), [{ channel: 'market_stats', symbols: [] }])
+  })
+
+  test('maps Bithumb subscriptions', () => {
+    const mapper = subscriptionsMappers.bithumb
+    const date = new Date()
+    const message = [
+      { ticket: 'test' },
+      { type: 'trade', codes: ['KRW-BTC', 'KRW-ETH'] },
+      { type: 'orderbook', codes: ['KRW-BTC'], level: 1 },
+      { type: 'ticker', codes: ['KRW-ETH'] },
+      { format: 'DEFAULT' }
+    ]
+
+    assert.equal(mapper.canHandle(message, date), true)
+    assert.deepEqual(mapper.map(message, date), [
+      { channel: 'trade', symbols: ['KRW-BTC', 'KRW-ETH'] },
+      { channel: 'orderbook', symbols: ['KRW-BTC'] },
+      { channel: 'ticker', symbols: ['KRW-ETH'] }
+    ])
+  })
+
+  test('maps Bitvavo Market Data Pro subscriptions', () => {
+    const mapper = subscriptionsMappers.bitvavo
+    const date = new Date()
+    const message = {
+      action: 'subscribe',
+      channels: [
+        { name: 'trades', markets: ['BTC-EUR', 'ETH-EUR'] },
+        { name: 'book', markets: ['BTC-EUR'] },
+        { name: 'ticker', markets: ['ETH-EUR'] }
+      ]
+    }
+
+    assert.equal(mapper.canHandle(message, date), true)
+    assert.deepEqual(mapper.map(message, date), [
+      { channel: 'trade', symbols: ['BTC-EUR', 'ETH-EUR'] },
+      { channel: 'book', symbols: ['BTC-EUR'] },
+      { channel: 'ticker', symbols: ['ETH-EUR'] }
+    ])
+  })
+
+  test('maps Bitvavo order book snapshot requests', () => {
+    const mapper = subscriptionsMappers.bitvavo
+    const date = new Date()
+    const message = { action: 'getBook', requestId: 1, market: 'BTC-EUR', depth: 1000 }
+
+    assert.equal(mapper.canHandle(message, date), true)
+    assert.deepEqual(mapper.map(message, date), [{ channel: 'getBook', symbols: ['BTC-EUR'] }])
+  })
+
   test('maps bullish market data subscriptions', () => {
     const mapper = subscriptionsMappers.bullish
     const date = new Date()

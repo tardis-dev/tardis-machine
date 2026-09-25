@@ -745,6 +745,23 @@ const lighterMapper: SubscriptionMapper = {
   }
 }
 
+const bitvavoMapper: SubscriptionMapper = {
+  canHandle: (message: any) => {
+    return message.action === 'subscribe' || message.action === 'getBook'
+  },
+
+  map: (message: any) => {
+    if (message.action === 'getBook') {
+      return [{ channel: 'getBook', symbols: [message.market] }]
+    }
+
+    return message.channels.map((channel: any) => ({
+      channel: channel.name === 'trades' ? 'trade' : channel.name,
+      symbols: channel.markets
+    }))
+  }
+}
+
 const bullishMapper: SubscriptionMapper = {
   canHandle: (message: any) => {
     return message.method === 'subscribe'
@@ -834,6 +851,8 @@ export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
   'dydx-v4': dydxMapper,
   'huobi-dm-options': huobiMapper,
   upbit: upbitMapper,
+  bithumb: upbitMapper,
+  bitvavo: bitvavoMapper,
   serum: serumMaper,
   'star-atlas': serumMaper,
   mango: serumMaper,
@@ -854,6 +873,7 @@ export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
   'coinbase-international': coinbaseInternationalMapper,
   hyperliquid: hyperliquidMapper,
   lighter: lighterMapper,
+  'lighter-rh': lighterMapper,
   bullish: bullishMapper,
   polymarket: polymarketMapper
 }
