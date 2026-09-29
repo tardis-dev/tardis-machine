@@ -76,7 +76,7 @@
   "license": "MPL-2.0",
   "dependencies": {
     "debug": "^4.4.3",
-    "tardis-dev": "^18.3.6",
+    "tardis-dev": "^18.3.7",
     "ws": "^8.21.3"
   },
   "bundleDependencies": true,
