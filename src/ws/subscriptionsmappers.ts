@@ -863,6 +863,7 @@ export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
   'woo-x': wooxMapper,
   'blockchain-com': blockchainComMapper,
   'bybit-options': bybitMapper,
+  'bybit-spread': bybitMapper,
   'binance-european-options': binanceMapper,
   'okex-spreads': okexMapper,
   'kucoin-futures': kucoinMapper,

@@ -32,6 +32,18 @@ describe('subscriptions mappers', () => {
     assert.deepEqual(mapper.map(message, date), [{ channel: 'orderbook.25', symbols: ['BTC-1AUG25-112000-P-USDT'] }])
   })
 
+  test('maps Bybit spread subscriptions with full spread symbols', () => {
+    const mapper = subscriptionsMappers['bybit-spread']
+    const date = new Date()
+    const message = { op: 'subscribe', args: ['orderbook.25.BTCUSDT_BTC/USDT', 'publicTrade.BTCUSDT-26MAR27_BTCUSDT-25DEC26'] }
+
+    assert.equal(mapper.canHandle(message, date), true)
+    assert.deepEqual(mapper.map(message, date), [
+      { channel: 'orderbook.25', symbols: ['BTCUSDT_BTC/USDT'] },
+      { channel: 'publicTrade', symbols: ['BTCUSDT-26MAR27_BTCUSDT-25DEC26'] }
+    ])
+  })
+
   test('maps Hyperliquid fast book subscriptions', () => {
     const mapper = subscriptionsMappers.hyperliquid
     const date = new Date()
