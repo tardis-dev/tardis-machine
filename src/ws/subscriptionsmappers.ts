@@ -58,6 +58,11 @@ const coinbaseMaper: SubscriptionMapper = {
   }
 }
 
+const coinbaseDerivativesMapper: SubscriptionMapper = {
+  canHandle: (message: any) => message.type === 'subscribe' && typeof message.channel === 'string',
+  map: (message: any) => [{ channel: message.channel === 'level2' ? 'l2_data' : message.channel, symbols: message.product_ids }]
+}
+
 // https://docs.deribit.com/v2/#subscription-management
 const deribitMapper: SubscriptionMapper = {
   canHandle: (message: any) => {
@@ -808,7 +813,8 @@ const polymarketMapper: SubscriptionMapper = {
   }
 }
 
-export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
+export const subscriptionsMappers: Record<Exchange | 'coinbase-derivatives', SubscriptionMapper> = {
+  'coinbase-derivatives': coinbaseDerivativesMapper,
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
   deribit: deribitMapper,
