@@ -58,6 +58,12 @@ const coinbaseMaper: SubscriptionMapper = {
   }
 }
 
+// https://docs.cdp.coinbase.com/coinbase-app/advanced-trade-apis/websocket/websocket-overview
+const coinbaseDerivativesMapper: SubscriptionMapper = {
+  canHandle: (message: any) => message.type === 'subscribe',
+  map: (message: any) => [{ channel: message.channel === 'level2' ? 'l2_data' : message.channel, symbols: message.product_ids }]
+}
+
 // https://docs.deribit.com/v2/#subscription-management
 const deribitMapper: SubscriptionMapper = {
   canHandle: (message: any) => {
@@ -811,6 +817,7 @@ const polymarketMapper: SubscriptionMapper = {
 export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
+  'coinbase-derivatives': coinbaseDerivativesMapper,
   deribit: deribitMapper,
   cryptofacilities: cryptofacilitiesMapper,
   bitstamp: bitstampMapper,

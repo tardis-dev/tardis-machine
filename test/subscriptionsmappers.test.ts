@@ -3,6 +3,17 @@ import { subscriptionsMappers } from '../src/ws/subscriptionsmappers.ts'
 import { assert } from './assertions.ts'
 
 describe('subscriptions mappers', () => {
+  test('maps Coinbase derivatives subscriptions to recorded channels', () => {
+    const mapper = subscriptionsMappers['coinbase-derivatives']
+    const date = new Date()
+    const symbols = ['BIP-20DEC30-CDE']
+    assert.deepEqual(mapper.map({ type: 'subscribe', channel: 'level2', product_ids: symbols }, date), [{ channel: 'l2_data', symbols }])
+    assert.deepEqual(mapper.map({ type: 'subscribe', channel: 'market_trades', product_ids: symbols }, date), [
+      { channel: 'market_trades', symbols }
+    ])
+    assert.deepEqual(mapper.map({ type: 'subscribe', channel: 'heartbeats' }, date), [{ channel: 'heartbeats', symbols: undefined }])
+    assert.equal(mapper.canHandle({ type: 'unsubscribe', channel: 'level2', product_ids: symbols }, date), false)
+  })
   test('maps Aster Spot and Futures subscriptions', () => {
     const date = new Date()
     const spotMapper = subscriptionsMappers.aster
