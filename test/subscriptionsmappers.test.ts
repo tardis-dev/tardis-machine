@@ -17,7 +17,7 @@ describe('subscriptions mappers', () => {
 
   test('maps Gate futures OBU, legacy books and liquidation subscriptions', () => {
     const mapper = subscriptionsMappers['gate-io-futures']
-    const date = new Date('2026-10-20T00:00:00.000Z')
+    const date = new Date('2026-10-21T00:00:00.000Z')
     for (const [channel, payload, symbols] of [
       ['obu', ['ob.BTC_USDT.400', 'ob.BTC_USD.400', 'ob.BTC_USD1.400'], ['BTC_USDT', 'BTC_USD', 'BTC_USD1']],
       ['obu', ['ob.ETH_USDT_20261023.100'], ['ETH_USDT_20261023']],
