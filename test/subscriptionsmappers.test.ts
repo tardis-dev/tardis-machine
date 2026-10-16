@@ -14,6 +14,27 @@ describe('subscriptions mappers', () => {
     assert.deepEqual(mapper.map({ type: 'subscribe', channel: 'heartbeats' }, date), [{ channel: 'heartbeats', symbols: undefined }])
     assert.equal(mapper.canHandle({ type: 'unsubscribe', channel: 'level2', product_ids: symbols }, date), false)
   })
+
+  test('maps Gate futures OBU, legacy books and liquidation subscriptions', () => {
+    const mapper = subscriptionsMappers['gate-io-futures']
+    const date = new Date('2026-10-20T00:00:00.000Z')
+    for (const [channel, payload, symbols] of [
+      ['obu', ['ob.BTC_USDT.400', 'ob.BTC_USD.400', 'ob.BTC_USD1.400'], ['BTC_USDT', 'BTC_USD', 'BTC_USD1']],
+      ['obu', ['ob.ETH_USDT_20261023.100'], ['ETH_USDT_20261023']],
+      ['order_book', ['BTC_USDT', '20', '0'], ['BTC_USDT']],
+      ['public_liquidates', ['!all'], []],
+      ['public_liquidates', ['BTC_USDT', 'ETH_USDT'], ['BTC_USDT', 'ETH_USDT']],
+      ['tickers', ['ETH_USDT_20261023'], ['ETH_USDT_20261023']],
+      ['trades', ['BTC_USD1'], ['BTC_USD1']],
+      ['book_ticker', ['BTC_USD'], ['BTC_USD']]
+    ] as const) {
+      const message = { event: 'subscribe', channel: `futures.${channel}`, payload }
+      assert.equal(mapper.canHandle(message, date), true)
+      assert.deepEqual(mapper.map(message, date), [{ channel, symbols }])
+    }
+    assert.equal(mapper.canHandle({ event: 'update', channel: 'futures.obu' }, date), false)
+  })
+
   test('maps Aster Spot and Futures subscriptions', () => {
     const date = new Date()
     const spotMapper = subscriptionsMappers.aster
