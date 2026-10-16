@@ -439,9 +439,20 @@ const gateIOFuturesMapper: SubscriptionMapper = {
   },
 
   map: (message: any) => {
+    const channel = message.channel.split('.')[1]
+    if (channel === 'obu') {
+      return [{ channel, symbols: message.payload.map((stream: string) => stream.slice(3, stream.lastIndexOf('.'))) }]
+    }
+    if (channel === 'order_book') {
+      return [{ channel, symbols: [message.payload[0]] }]
+    }
+    if (channel === 'public_liquidates' && message.payload.includes('!all')) {
+      return [{ channel, symbols: [] }]
+    }
+
     return [
       {
-        channel: message.channel.split('.')[1],
+        channel,
         symbols: message.payload.map((s: any) => {
           if (typeof s === 'string') {
             return s
