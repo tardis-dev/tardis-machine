@@ -34,6 +34,16 @@ describe('subscriptions mappers', () => {
     ])
   })
 
+  test('maps Binance Futures global stream subscriptions without symbols', () => {
+    const mapper = subscriptionsMappers['binance-futures']
+    const message = { method: 'SUBSCRIBE', params: ['btcusdt@fundingRate', 'tradingSession', '!contractInfo'] }
+    assert.deepEqual(mapper.map(message, new Date()), [
+      { channel: 'fundingRate', symbols: ['btcusdt'] },
+      { channel: 'tradingSession', symbols: undefined },
+      { channel: '!contractInfo', symbols: undefined }
+    ])
+  })
+
   test('maps Bybit options order book subscriptions with their depth', () => {
     const mapper = subscriptionsMappers['bybit-options']
     const date = new Date()

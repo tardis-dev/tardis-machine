@@ -226,6 +226,10 @@ const binanceMapper: SubscriptionMapper = {
       const lastSeparator = param.lastIndexOf('@')
       const firstSeparator = param.indexOf('@')
 
+      if (firstSeparator === -1) {
+        return { channel: param, symbols: undefined }
+      }
+
       return {
         channel: param.slice(firstSeparator + 1, lastSeparator == firstSeparator ? undefined : lastSeparator),
         symbols: [param.slice(0, firstSeparator)]
