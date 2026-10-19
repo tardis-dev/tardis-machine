@@ -3,6 +3,37 @@ import { subscriptionsMappers } from '../src/ws/subscriptionsmappers.ts'
 import { assert } from './assertions.ts'
 
 describe('subscriptions mappers', () => {
+  test('maps Delta India compact channels and preserves native mark price symbols', () => {
+    const mapper = subscriptionsMappers['delta-india']
+    const date = new Date('2026-10-20')
+    const channels = [
+      { name: 'trades', symbols: ['BTCUSD'] },
+      { name: 'ob_updates', symbols: ['BTCUSD'] },
+      { name: 'ob_l1', symbols: ['BTCUSD'] },
+      { name: 'ticker', symbols: ['C-BTC-83000-201026'] },
+      { name: 'mark_price', symbols: ['MARK:BTCUSD'] },
+      { name: 'funding_rate', symbols: ['BTCUSD'] },
+      { name: 'spot_price', symbols: ['.DEXBTUSD'] },
+      { name: 'spot_30mtwap_price', symbols: ['.DEXBTUSD'] },
+      { name: 'product_updates' },
+      { name: 'system_status' }
+    ]
+    const message = { type: 'subscribe', payload: { channels } }
+    assert.equal(mapper.canHandle(message, date), true)
+    assert.deepEqual(mapper.map(message, date), [
+      { channel: 'trades', symbols: ['BTCUSD'] },
+      { channel: 'ob_updates', symbols: ['BTCUSD'] },
+      { channel: 'ob_l1', symbols: ['BTCUSD'] },
+      { channel: 'ticker', symbols: ['C-BTC-83000-201026'] },
+      { channel: 'mark_price', symbols: ['MARK:BTCUSD'] },
+      { channel: 'funding_rate', symbols: ['BTCUSD'] },
+      { channel: 'spot_price', symbols: ['.DEXBTUSD'] },
+      { channel: 'spot_30mtwap_price', symbols: ['.DEXBTUSD'] },
+      { channel: 'product_updates', symbols: undefined },
+      { channel: 'system_status', symbols: undefined }
+    ])
+    assert.equal(mapper.canHandle({ ...message, type: 'unsubscribe' }, date), false)
+  })
   test('maps Coinbase derivatives subscriptions to recorded channels', () => {
     const mapper = subscriptionsMappers['coinbase-derivatives']
     const date = new Date()

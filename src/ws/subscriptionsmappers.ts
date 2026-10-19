@@ -413,6 +413,11 @@ const deltaMapper: SubscriptionMapper = {
   }
 }
 
+const deltaIndiaMapper: SubscriptionMapper = {
+  canHandle: (message: any) => message.type === 'subscribe',
+  map: (message: any) => message.payload.channels.map((channel: any) => ({ channel: channel.name, symbols: channel.symbols }))
+}
+
 const gateIOMapper: SubscriptionMapper = {
   canHandle: (message: any) => {
     return message.method !== undefined && message.method.endsWith('.subscribe')
@@ -854,6 +859,7 @@ export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
   coinflex: coinflexMapper,
   phemex: phemexMapper,
   delta: deltaMapper,
+  'delta-india': deltaIndiaMapper,
   'gate-io': gateIOMapper,
   'gate-io-futures': gateIOFuturesMapper,
   poloniex: poloniexMapper,
