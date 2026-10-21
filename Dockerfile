@@ -1,4 +1,4 @@
-FROM node:26.7.0-bookworm-slim AS package
+FROM node:26.12.1-bookworm-slim AS package
 
 COPY publish-artifact/tardis-machine.tgz /tmp/tardis-machine.tgz
 
@@ -8,7 +8,7 @@ RUN mkdir /tmp/tardis-machine \
   && node --input-type=module --eval "await import('/tmp/tardis-machine/dist/index.js')" \
   && rm /tmp/tardis-machine.tgz
 
-FROM node:26.7.0-bookworm-slim
+FROM node:26.12.1-bookworm-slim
 
 ENV NODE_ENV=production
 ENV TM_CACHE_DIR=/.cache
