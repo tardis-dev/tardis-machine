@@ -829,6 +829,18 @@ const polymarketMapper: SubscriptionMapper = {
   }
 }
 
+// https://docs.whitebit.com/websocket/market-streams/depth
+const whitebitMapper: SubscriptionMapper = {
+  canHandle: (message: any) =>
+    ['depth_subscribe', 'bookTicker_subscribe', 'trades_subscribe', 'premiumIndex_subscribe', 'futures_subscribe'].includes(message.method),
+  map: (message: any) => [
+    {
+      channel: message.method.replace('_subscribe', '_update'),
+      symbols: ['depth_subscribe', 'bookTicker_subscribe'].includes(message.method) ? [message.params[0]] : message.params
+    }
+  ]
+}
+
 export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
@@ -898,7 +910,8 @@ export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
   lighter: lighterMapper,
   'lighter-rh': lighterMapper,
   bullish: bullishMapper,
-  polymarket: polymarketMapper
+  polymarket: polymarketMapper,
+  whitebit: whitebitMapper
 }
 
 export type SubscriptionMapper = {

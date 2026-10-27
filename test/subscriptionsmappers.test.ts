@@ -3,6 +3,27 @@ import { subscriptionsMappers } from '../src/ws/subscriptionsmappers.ts'
 import { assert } from './assertions.ts'
 
 describe('subscriptions mappers', () => {
+  test('maps WhiteBIT subscriptions without treating depth options as symbols', () => {
+    const mapper = subscriptionsMappers.whitebit
+    const date = new Date('2026-10-29')
+    for (const [method, params, channel, symbols] of [
+      ['depth_subscribe', ['BTC_USDT', 100, '0', true], 'depth_update', ['BTC_USDT']],
+      ['bookTicker_subscribe', ['BTC_PERP'], 'bookTicker_update', ['BTC_PERP']],
+      ['trades_subscribe', ['BTC_USDT', 'ETH_USDT'], 'trades_update', ['BTC_USDT', 'ETH_USDT']],
+      ['trades_subscribe', [], 'trades_update', []],
+      ['premiumIndex_subscribe', ['BTC_PERP', 'XAU_PERP'], 'premiumIndex_update', ['BTC_PERP', 'XAU_PERP']],
+      ['futures_subscribe', ['XAU_PERP'], 'futures_update', ['XAU_PERP']],
+      ['futures_subscribe', [], 'futures_update', []]
+    ] as const) {
+      const message = { id: 1, method, params }
+      assert.equal(mapper.canHandle(message, date), true)
+      assert.deepEqual(mapper.map(message, date), [{ channel, symbols }])
+    }
+    for (const method of ['depth_unsubscribe', 'depth_update', 'server.ping', 'unknown_subscribe']) {
+      assert.equal(mapper.canHandle({ method, params: [] }, date), false)
+    }
+  })
+
   test('maps Coinbase derivatives subscriptions to recorded channels', () => {
     const mapper = subscriptionsMappers['coinbase-derivatives']
     const date = new Date()
