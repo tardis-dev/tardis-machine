@@ -2,12 +2,12 @@
   "name": "tardis-machine",
   "version": "18.4.2",
   "engines": {
-    "node": ">=24.19"
+    "node": "^24.22.1 || >=26.12.1"
   },
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "^24.19.0 || >=26.0.0"
+      "version": "^24.22.1 || >=26.12.1"
     },
     "packageManager": {
       "name": "npm",
@@ -76,7 +76,7 @@
   "license": "MPL-2.0",
   "dependencies": {
     "debug": "^4.4.3",
-    "tardis-dev": "^18.4.2",
+    "tardis-dev": "^18.8.0",
     "ws": "^8.21.3"
   },
   "bundleDependencies": true,
