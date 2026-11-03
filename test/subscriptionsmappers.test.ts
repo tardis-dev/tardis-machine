@@ -3,6 +3,53 @@ import { subscriptionsMappers } from '../src/ws/subscriptionsmappers.ts'
 import { assert } from './assertions.ts'
 
 describe('subscriptions mappers', () => {
+  test('maps Backpack public subscriptions and preserves dotted market symbols and stock tickers', () => {
+    const mapper = subscriptionsMappers.backpack
+    const date = new Date('2026-11-03')
+    const message = {
+      method: 'SUBSCRIBE',
+      params: [
+        'trade.BTC_USDC',
+        'depth.BRK.B.US_USDC_PERP',
+        'bookTicker.BTC_USDC_PERP',
+        'ticker.BTC_USDC',
+        'markPrice.BTC_USDC_PERP',
+        'openInterest.BTC_USDC_PERP',
+        'liquidation.BTC_USDC_PERP',
+        'externalTicker.MU.US_USDC',
+        'stockPrice.BRK.B',
+        'stockIndicativeQuote.BRK.B'
+      ]
+    }
+    assert.equal(mapper.canHandle(message, date), true)
+    assert.deepEqual(mapper.map(message, date), [
+      { channel: 'trade', symbols: ['BTC_USDC'] },
+      { channel: 'depth', symbols: ['BRK.B.US_USDC_PERP'] },
+      { channel: 'bookTicker', symbols: ['BTC_USDC_PERP'] },
+      { channel: 'ticker', symbols: ['BTC_USDC'] },
+      { channel: 'markPrice', symbols: ['BTC_USDC_PERP'] },
+      { channel: 'openInterest', symbols: ['BTC_USDC_PERP'] },
+      { channel: 'liquidation', symbols: ['BTC_USDC_PERP'] },
+      { channel: 'externalTicker', symbols: ['MU.US_USDC'] },
+      { channel: 'stockPrice', symbols: ['BRK.B'] },
+      { channel: 'stockIndicativeQuote', symbols: ['BRK.B'] }
+    ])
+    assert.equal(mapper.canHandle({ ...message, method: 'UNSUBSCRIBE' }, date), false)
+    assert.equal(mapper.canHandle({ method: 'SUBSCRIBE', params: 'trade.BTC_USDC' }, date), false)
+    assert.equal(mapper.canHandle({ stream: 'trade.BTC_USDC', data: {} }, date), false)
+  })
+
+  test('maps explicit Backpack generated snapshot replay subscriptions', () => {
+    const mapper = subscriptionsMappers.backpack
+    const date = new Date('2026-11-03')
+    const message = { method: 'SUBSCRIBE', params: ['depth.MU.US_USDC', 'depthSnapshot.MU.US_USDC'] }
+    assert.equal(mapper.canHandle(message, date), true)
+    assert.deepEqual(mapper.map(message, date), [
+      { channel: 'depth', symbols: ['MU.US_USDC'] },
+      { channel: 'depthSnapshot', symbols: ['MU.US_USDC'] }
+    ])
+  })
+
   test('maps Delta India compact channels and preserves native mark price symbols', () => {
     const mapper = subscriptionsMappers['delta-india']
     const date = new Date('2026-10-20')

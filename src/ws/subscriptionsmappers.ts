@@ -238,6 +238,21 @@ const binanceMapper: SubscriptionMapper = {
   }
 }
 
+// https://docs.backpack.exchange/#tag/Streams/Usage/Subscribing
+const backpackMapper: SubscriptionMapper = {
+  canHandle: (message: any) => message.method === 'SUBSCRIBE' && Array.isArray(message.params),
+
+  map: (message: any) => {
+    return message.params.map((stream: string) => {
+      const separator = stream.indexOf('.')
+      return {
+        channel: stream.slice(0, separator),
+        symbols: [stream.slice(separator + 1)]
+      }
+    })
+  }
+}
+
 // https://docs.binance.org/api-reference/dex-api/ws-connection.html
 const binanceDEXMapper: SubscriptionMapper = {
   canHandle: (message: any) => {
@@ -834,7 +849,9 @@ const polymarketMapper: SubscriptionMapper = {
   }
 }
 
-export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
+// Backpack's mapper is prepared before the client release adds it to Exchange.
+export const subscriptionsMappers: Record<Exchange | 'backpack', SubscriptionMapper> = {
+  backpack: backpackMapper,
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
   'coinbase-derivatives': coinbaseDerivativesMapper,
