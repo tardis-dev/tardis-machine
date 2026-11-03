@@ -1,7 +1,7 @@
-import { once } from 'node:events'
 import type { IncomingMessage, OutgoingMessage, ServerResponse } from 'node:http'
 import { replay, ReplayOptions } from 'tardis-dev'
 import { debug } from '../debug.ts'
+import { responseDrainedOrClosed } from '../helpers.ts'
 
 export const replayHttp = async (req: IncomingMessage, res: ServerResponse) => {
   try {
@@ -51,9 +51,20 @@ async function writeMessagesToResponse(res: OutgoingMessage, replayOptions: Repl
   let buffers: Buffer[] = []
   let totalMessagesCount = 0
 
+  // 'close' is emitted when the response completes or when the client disconnects before that
+  let responseClosed = false
+  res.once('close', () => {
+    responseClosed = true
+  })
+
   const messages = replay({ ...replayOptions, skipDecoding: true })
 
   for await (let messageWithTimestamp of messages) {
+    // stop the replay when the client has disconnected
+    if (responseClosed) {
+      break
+    }
+
     totalMessagesCount++
 
     if (messageWithTimestamp === undefined) {
@@ -77,7 +88,11 @@ async function writeMessagesToResponse(res: OutgoingMessage, replayOptions: Repl
         buffers = []
 
         if (!ok) {
-          await once(res, 'drain')
+          await responseDrainedOrClosed(res)
+
+          if (responseClosed) {
+            break
+          }
         }
       }
     }
