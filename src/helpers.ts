@@ -1,3 +1,4 @@
+import type { OutgoingMessage } from 'node:http'
 import {
   ComputableFactory,
   computeBookSnapshots,
@@ -250,6 +251,20 @@ function parseAsQuoteComputable(dataType: string) {
 }
 
 export const wait = (delayMS: number) => new Promise((resolve) => setTimeout(resolve, delayMS))
+
+// 'drain' is never emitted after the client disconnects, so also stop waiting on 'close';
+// both listeners are removed on either event, so repeated waits keep nothing alive
+export const responseDrainedOrClosed = (res: OutgoingMessage) =>
+  new Promise<void>((resolve) => {
+    const done = () => {
+      res.off('drain', done)
+      res.off('close', done)
+      resolve()
+    }
+
+    res.on('drain', done)
+    res.on('close', done)
+  })
 
 const oldToISOString = Date.prototype.toISOString
 
