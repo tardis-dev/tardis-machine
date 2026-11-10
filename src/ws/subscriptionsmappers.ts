@@ -841,7 +841,7 @@ const whitebitMapper: SubscriptionMapper = {
   map: (message: any) => [
     {
       channel: message.method.replace('_subscribe', '_update'),
-      symbols: ['depth_subscribe', 'bookTicker_subscribe'].includes(message.method) ? [message.params[0]] : message.params
+      symbols: message.method === 'depth_subscribe' ? [message.params[0]] : message.params
     }
   ]
 }

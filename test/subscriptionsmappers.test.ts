@@ -9,6 +9,7 @@ describe('subscriptions mappers', () => {
     for (const [method, params, channel, symbols] of [
       ['depth_subscribe', ['BTC_USDT', 100, '0', true], 'depth_update', ['BTC_USDT']],
       ['bookTicker_subscribe', ['BTC_PERP'], 'bookTicker_update', ['BTC_PERP']],
+      ['bookTicker_subscribe', [], 'bookTicker_update', []],
       ['trades_subscribe', ['BTC_USDT', 'ETH_USDT'], 'trades_update', ['BTC_USDT', 'ETH_USDT']],
       ['trades_subscribe', [], 'trades_update', []],
       ['premiumIndex_subscribe', ['BTC_PERP', 'XAU_PERP'], 'premiumIndex_update', ['BTC_PERP', 'XAU_PERP']],
