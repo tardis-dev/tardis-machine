@@ -16,7 +16,6 @@ describe('subscriptions mappers', () => {
         'markPrice.BTC_USDC_PERP',
         'openInterest.BTC_USDC_PERP',
         'liquidation.BTC_USDC_PERP',
-        'externalTicker.MU.US_USDC',
         'stockPrice.BRK.B',
         'stockIndicativeQuote.BRK.B'
       ]
@@ -30,7 +29,6 @@ describe('subscriptions mappers', () => {
       { channel: 'markPrice', symbols: ['BTC_USDC_PERP'] },
       { channel: 'openInterest', symbols: ['BTC_USDC_PERP'] },
       { channel: 'liquidation', symbols: ['BTC_USDC_PERP'] },
-      { channel: 'externalTicker', symbols: ['MU.US_USDC'] },
       { channel: 'stockPrice', symbols: ['BRK.B'] },
       { channel: 'stockIndicativeQuote', symbols: ['BRK.B'] }
     ])
