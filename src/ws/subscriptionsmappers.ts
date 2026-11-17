@@ -861,8 +861,7 @@ const whitebitMapper: SubscriptionMapper = {
   ]
 }
 
-// Backpack's mapper is prepared before the client release adds it to Exchange.
-export const subscriptionsMappers: Record<Exchange | 'backpack', SubscriptionMapper> = {
+export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
   backpack: backpackMapper,
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
