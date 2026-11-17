@@ -849,6 +849,18 @@ const polymarketMapper: SubscriptionMapper = {
   }
 }
 
+// https://docs.whitebit.com/websocket/market-streams/depth
+const whitebitMapper: SubscriptionMapper = {
+  canHandle: (message: any) =>
+    ['depth_subscribe', 'bookTicker_subscribe', 'trades_subscribe', 'premiumIndex_subscribe', 'futures_subscribe'].includes(message.method),
+  map: (message: any) => [
+    {
+      channel: message.method.replace('_subscribe', '_update'),
+      symbols: message.method === 'depth_subscribe' ? [message.params[0]] : message.params
+    }
+  ]
+}
+
 // Backpack's mapper is prepared before the client release adds it to Exchange.
 export const subscriptionsMappers: Record<Exchange | 'backpack', SubscriptionMapper> = {
   backpack: backpackMapper,
@@ -921,7 +933,8 @@ export const subscriptionsMappers: Record<Exchange | 'backpack', SubscriptionMap
   lighter: lighterMapper,
   'lighter-rh': lighterMapper,
   bullish: bullishMapper,
-  polymarket: polymarketMapper
+  polymarket: polymarketMapper,
+  whitebit: whitebitMapper
 }
 
 export type SubscriptionMapper = {

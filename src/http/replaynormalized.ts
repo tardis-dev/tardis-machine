@@ -1,8 +1,13 @@
-import { once } from 'node:events'
 import type { IncomingMessage, OutgoingMessage, ServerResponse } from 'node:http'
 import { combine, compute, replayNormalized } from 'tardis-dev'
 import { debug } from '../debug.ts'
-import { constructDataTypeFilter, getComputables, getNormalizers, ReplayNormalizedRequestOptions } from '../helpers.ts'
+import {
+  constructDataTypeFilter,
+  getComputables,
+  getNormalizers,
+  ReplayNormalizedRequestOptions,
+  responseDrainedOrClosed
+} from '../helpers.ts'
 
 export const replayNormalizedHttp = async (req: IncomingMessage, res: ServerResponse) => {
   try {
@@ -47,6 +52,12 @@ async function writeMessagesToResponse(res: OutgoingMessage, options: ReplayNorm
   let buffers: string[] = []
   let totalMessagesCount = 0
 
+  // 'close' is emitted when the response completes or when the client disconnects before that
+  let responseClosed = false
+  res.once('close', () => {
+    responseClosed = true
+  })
+
   const replayNormalizedOptions = Array.isArray(options) ? options : [options]
 
   const messagesIterables = replayNormalizedOptions.map((option) => {
@@ -67,6 +78,11 @@ async function writeMessagesToResponse(res: OutgoingMessage, options: ReplayNorm
   const messages = messagesIterables.length === 1 ? messagesIterables[0] : combine(...messagesIterables)
 
   for await (const message of messages) {
+    // stop the replay when the client has disconnected
+    if (responseClosed) {
+      break
+    }
+
     // filter out messages not explicitly requested via options.dataTypes
     // eg.: return only book_snapshots when someone asked only for those
     // as by default also book_changes are returned as well
@@ -83,7 +99,11 @@ async function writeMessagesToResponse(res: OutgoingMessage, options: ReplayNorm
       buffers = []
 
       if (!ok) {
-        await once(res, 'drain')
+        await responseDrainedOrClosed(res)
+
+        if (responseClosed) {
+          break
+        }
       }
     }
   }
