@@ -3,6 +3,32 @@ import { subscriptionsMappers } from '../src/ws/subscriptionsmappers.ts'
 import { assert } from './assertions.ts'
 
 describe('subscriptions mappers', () => {
+  const channelsByExchange = {
+    bingx: ['incrDepth', 'trade', 'bookTicker', 'ticker'],
+    'bingx-futures': ['incrDepth', 'trade', 'bookTicker', 'markPrice', 'ticker', 'premiumIndex', 'openInterest']
+  }
+  const symbolsByExchange = {
+    bingx: ['BTC-USDT', 'WAFLLES-OLD-USDT'],
+    'bingx-futures': ['BTC-USDT', 'NCSKMSFT2USD-USDT']
+  }
+
+  for (const exchange of ['bingx', 'bingx-futures'] as const) {
+    test(`maps ${exchange} native subscriptions without changing symbol or channel identity`, () => {
+      const mapper = subscriptionsMappers[exchange]
+      const date = new Date('2026-11-25')
+      for (const symbol of symbolsByExchange[exchange]) {
+        for (const channel of channelsByExchange[exchange]) {
+          const message = { id: '1', reqType: 'sub', dataType: `${symbol}@${channel}` }
+          assert.equal(mapper.canHandle(message, date), true)
+          assert.deepEqual(mapper.map(message, date), [{ channel, symbols: [symbol] }])
+          assert.equal(mapper.canHandle({ ...message, reqType: 'unsub' }, date), false)
+        }
+      }
+      assert.equal(mapper.canHandle({ code: 0, id: '1', msg: 'SUCCESS' }, date), false)
+      assert.equal(mapper.canHandle({ code: 0, dataType: 'BTC-USDT@trade', data: {} }, date), false)
+    })
+  }
+
   test('maps Backpack public subscriptions and preserves dotted market symbols and stock tickers', () => {
     const mapper = subscriptionsMappers.backpack
     const date = new Date('2026-11-03')

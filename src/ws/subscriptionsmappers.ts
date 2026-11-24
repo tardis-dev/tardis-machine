@@ -253,6 +253,15 @@ const backpackMapper: SubscriptionMapper = {
   }
 }
 
+// https://bingx-api.github.io/docs-v3/#/en/Quick%20Start/WebSocket%20Rules/WebSocket%20Rules
+const bingxMapper: SubscriptionMapper = {
+  canHandle: (message: any) => message.reqType === 'sub',
+  map: (message: any) => {
+    const [symbol, channel] = message.dataType.split('@')
+    return [{ channel, symbols: [symbol] }]
+  }
+}
+
 // https://docs.binance.org/api-reference/dex-api/ws-connection.html
 const binanceDEXMapper: SubscriptionMapper = {
   canHandle: (message: any) => {
@@ -862,6 +871,8 @@ const whitebitMapper: SubscriptionMapper = {
 }
 
 export const subscriptionsMappers: Record<Exchange, SubscriptionMapper> = {
+  bingx: bingxMapper,
+  'bingx-futures': bingxMapper,
   backpack: backpackMapper,
   bitmex: bitmexMapper,
   coinbase: coinbaseMaper,
