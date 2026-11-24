@@ -4,11 +4,42 @@ import { EXCHANGES, type FilterForExchange, getExchangeDetails } from 'tardis-de
 import type { TardisMachine as TardisMachineType } from '../dist/index.js'
 import { assert, snapshot } from './assertions.ts'
 
-const PORT = 8072
-const HTTP_REPLAY_DATA_FEEDS_URL = `http://localhost:${PORT}/replay`
-const HTTP_REPLAY_NORMALIZED_URL = `http://localhost:${PORT}/replay-normalized`
-const WS_REPLAY_NORMALIZED_URL = `ws://localhost:${PORT + 1}/ws-replay-normalized`
-const WS_REPLAY_URL = `ws://localhost:${PORT + 1}/ws-replay`
+let port: number
+let httpReplayDataFeedsUrl: string
+let httpReplayNormalizedUrl: string
+let wsReplayNormalizedUrl: string
+let wsReplayUrl: string
+
+function closeServer(server: net.Server) {
+  return new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())))
+}
+
+async function listenOnPort(targetPort: number) {
+  const server = net.createServer()
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(targetPort, () => {
+      server.removeListener('error', reject)
+      resolve()
+    })
+  })
+  return server
+}
+
+async function getFreePortPair() {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const httpServer = await listenOnPort(0)
+    const candidate = (httpServer.address() as net.AddressInfo).port
+    try {
+      const wsServer = await listenOnPort(candidate + 1)
+      await Promise.all([closeServer(httpServer), closeServer(wsServer)])
+      return candidate
+    } catch {
+      await closeServer(httpServer)
+    }
+  }
+  throw new Error('Could not find a free consecutive port pair')
+}
 
 const serializeOptions = (options: any) => {
   return encodeURIComponent(JSON.stringify(options))
@@ -35,13 +66,19 @@ async function* responseLines(response: Response) {
   if (buffered !== '') yield buffered
 }
 
-describe('tardis-machine', () => {
+describe('tardis-machine', { concurrency: true }, () => {
   let tardisMachine: TardisMachineType
 
   before(async () => {
+    port = await getFreePortPair()
+    httpReplayDataFeedsUrl = `http://localhost:${port}/replay`
+    httpReplayNormalizedUrl = `http://localhost:${port}/replay-normalized`
+    wsReplayNormalizedUrl = `ws://localhost:${port + 1}/ws-replay-normalized`
+    wsReplayUrl = `ws://localhost:${port + 1}/ws-replay`
+
     const { TardisMachine } = await import('../dist/index.js')
     tardisMachine = new TardisMachine({ cacheDir: './.cache' })
-    await tardisMachine.start(PORT) // start server
+    await tardisMachine.start(port) // start server
   })
 
   after(async () => {
@@ -50,7 +87,7 @@ describe('tardis-machine', () => {
 
   test('routes health checks with or without a trailing slash', async () => {
     for (const path of ['/health-check', '/health-check/']) {
-      const response = await fetch(`http://localhost:${PORT}${path}`)
+      const response = await fetch(`http://localhost:${port}${path}`)
       const body = (await response.json()) as { status: string }
 
       assert.equal(response.status, 200)
@@ -59,18 +96,16 @@ describe('tardis-machine', () => {
   })
 
   test('returns 404 for unknown routes and unsupported methods', async () => {
-    const unknownRoute = await fetch(`http://localhost:${PORT}/unknown`)
-    const unsupportedMethod = await fetch(`http://localhost:${PORT}/health-check`, { method: 'POST' })
+    const unknownRoute = await fetch(`http://localhost:${port}/unknown`)
+    const unsupportedMethod = await fetch(`http://localhost:${port}/health-check`, { method: 'POST' })
 
     assert.equal(unknownRoute.status, 404)
     assert.equal(unsupportedMethod.status, 404)
   })
 
   test('releases the HTTP port when the WebSocket port is unavailable', async () => {
-    const blockedWebSocketPort = PORT + 21
-    const httpPort = blockedWebSocketPort - 1
-    const blocker = net.createServer()
-    await new Promise<void>((resolve) => blocker.listen(blockedWebSocketPort, resolve))
+    const httpPort = await getFreePortPair()
+    const blocker = await listenOnPort(httpPort + 1)
 
     try {
       const { TardisMachine } = await import('../dist/index.js')
@@ -79,35 +114,35 @@ describe('tardis-machine', () => {
       await assert.rejects(machine.start(httpPort), (error: any) => error.code === 'EADDRINUSE')
       await assert.rejects(fetch(`http://localhost:${httpPort}/health-check`))
     } finally {
-      await new Promise<void>((resolve, reject) => blocker.close((error) => (error ? reject(error) : resolve())))
+      await closeServer(blocker)
     }
   })
 
   test('enforces WebSocket protocol limits without destabilizing the server', { timeout: 15_000 }, async () => {
-    const plainRequest = await fetch(`http://localhost:${PORT + 1}/`)
-    const acceptedLargeRequest = await fetch(`http://localhost:${PORT + 1}/${'x'.repeat(19_000)}`)
-    const rejectedOversizedRequest = await fetch(`http://localhost:${PORT + 1}/${'x'.repeat(21_000)}`)
+    const plainRequest = await fetch(`http://localhost:${port + 1}/`)
+    const acceptedLargeRequest = await fetch(`http://localhost:${port + 1}/${'x'.repeat(19_000)}`)
+    const rejectedOversizedRequest = await fetch(`http://localhost:${port + 1}/${'x'.repeat(21_000)}`)
 
     assert.equal(plainRequest.status, 426)
     assert.equal(acceptedLargeRequest.status, 426)
     assert.equal(rejectedOversizedRequest.status, 431)
 
-    const unknownRoute = await waitForWebSocketClose(`ws://localhost:${PORT + 1}/unknown?padding=${'x'.repeat(18_000)}`)
+    const unknownRoute = await waitForWebSocketClose(`ws://localhost:${port + 1}/unknown?padding=${'x'.repeat(18_000)}`)
     assert.equal(unknownRoute.code, 1008)
 
     const oversizedPayload = await waitForWebSocketClose(
-      `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-01T00:01:00Z`,
+      `${wsReplayUrl}?exchange=bitmex&from=2019-06-01&to=2019-06-01T00:01:00Z`,
       (socket) => socket.send('x'.repeat(512 * 1024 + 1))
     )
     assert.equal(oversizedPayload.code, 1009)
 
     const unsupportedExchange = await waitForWebSocketClose(
-      `${WS_REPLAY_URL}?exchange=${'x'.repeat(200)}&from=2019-06-01&to=2019-06-01T00:01:00Z`
+      `${wsReplayUrl}?exchange=${'x'.repeat(200)}&from=2019-06-01&to=2019-06-01T00:01:00Z`
     )
     assert.equal(unsupportedExchange.code, 1011)
     assert.ok(Buffer.byteLength(unsupportedExchange.reason) <= 123)
 
-    const healthCheckResponse = await fetch(`http://localhost:${PORT}/health-check`)
+    const healthCheckResponse = await fetch(`http://localhost:${port}/health-check`)
     assert.equal(healthCheckResponse.status, 200)
   })
 
@@ -121,7 +156,7 @@ describe('tardis-machine', () => {
         dataTypes: ['trade', 'book_change']
       }
 
-      const response = await fetch(`${HTTP_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`)
+      const response = await fetch(`${httpReplayNormalizedUrl}?options=${serializeOptions(options)}`)
 
       assert.equal(response.status, 200)
 
@@ -149,7 +184,7 @@ describe('tardis-machine', () => {
           dataTypes: ['quote', 'book_snapshot_5_6s']
         }
 
-        const response = await fetch(`${HTTP_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`)
+        const response = await fetch(`${httpReplayNormalizedUrl}?options=${serializeOptions(options)}`)
 
         assert.equal(response.status, 200)
 
@@ -184,7 +219,7 @@ describe('tardis-machine', () => {
         }
       ]
 
-      const response = await fetch(`${HTTP_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`)
+      const response = await fetch(`${httpReplayNormalizedUrl}?options=${serializeOptions(options)}`)
 
       assert.equal(response.status, 200)
 
@@ -204,7 +239,7 @@ describe('tardis-machine', () => {
   describe('HTTP GET /replay', () => {
     test('invalid params', async () => {
       let response = await fetch(
-        `${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions({
+        `${httpReplayDataFeedsUrl}?options=${serializeOptions({
           exchange: 'binance',
           from: 'sdf',
           to: 'ssd'
@@ -213,7 +248,7 @@ describe('tardis-machine', () => {
       assert.equal(response.status, 500)
 
       response = await fetch(
-        `${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions({
+        `${httpReplayDataFeedsUrl}?options=${serializeOptions({
           exchange: 'binance',
           from: '2019-06-05 00:00Z',
           to: '2019-05-05 00:05Z'
@@ -242,7 +277,7 @@ describe('tardis-machine', () => {
         filters
       }
 
-      const response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions(options)}`)
+      const response = await fetch(`${httpReplayDataFeedsUrl}?options=${serializeOptions(options)}`)
 
       assert.equal(response.status, 200)
 
@@ -277,18 +312,18 @@ describe('tardis-machine', () => {
           to: '2019-05-02T00:01:00Z'
         }
 
-        const response = await fetch(`${HTTP_REPLAY_DATA_FEEDS_URL}?options=${serializeOptions(options)}`)
+        const response = await fetch(`${httpReplayDataFeedsUrl}?options=${serializeOptions(options)}`)
 
         assert.equal(response.status, 401)
       }
     )
   })
 
-  describe('WS /ws-replay', { concurrency: true }, () => {
+  describe('WS /ws-replay', () => {
     test('subscribes to five minutes of historical Coinbase ZEC-USDC trades', { timeout: 10 * 60 * 1000 }, async (context) => {
       let messages: string[] = []
       const simpleCoinbaseClient = new SimpleWebsocketClient(
-        `${WS_REPLAY_URL}?exchange=coinbase&from=2019-06-01&to=2019-06-01T00:05:00Z`,
+        `${wsReplayUrl}?exchange=coinbase&from=2019-06-01&to=2019-06-01T00:05:00Z`,
         (message) => {
           messages.push(message as string)
         },
@@ -312,7 +347,7 @@ describe('tardis-machine', () => {
     test('subscribes to five minutes of historical Crypto Facilities PI_XBTUSD trades', { timeout: 10 * 60 * 1000 }, async (context) => {
       let messages: string[] = []
       const simpleCFClient = new SimpleWebsocketClient(
-        `${WS_REPLAY_URL}?exchange=cryptofacilities&from=2019-06-01&to=2019-06-01T00:05:00Z`,
+        `${wsReplayUrl}?exchange=cryptofacilities&from=2019-06-01&to=2019-06-01T00:05:00Z`,
         (message) => {
           messages.push(message as string)
         },
@@ -332,7 +367,7 @@ describe('tardis-machine', () => {
     test('subscribes to five minutes of historical Bitstamp LTCUSD trades', { timeout: 10 * 60 * 1000 }, async (context) => {
       let messages: string[] = []
       const simpleBitstampClient = new SimpleWebsocketClient(
-        `${WS_REPLAY_URL}?exchange=bitstamp&from=2019-06-01&to=2019-06-01T00:05:00Z`,
+        `${wsReplayUrl}?exchange=bitstamp&from=2019-06-01&to=2019-06-01T00:05:00Z`,
         (message) => {
           messages.push(message as string)
         },
@@ -353,7 +388,7 @@ describe('tardis-machine', () => {
     test('subscribes to five minutes of historical OKEX BTC-USDT trades', { timeout: 10 * 60 * 1000 }, async (context) => {
       let messages: string[] = []
       const simpleOkexClient = new SimpleWebsocketClient(
-        `${WS_REPLAY_URL}?exchange=okex&from=2019-06-01&to=2019-06-01T00:05:00Z`,
+        `${wsReplayUrl}?exchange=okex&from=2019-06-01&to=2019-06-01T00:05:00Z`,
         (message) => {
           messages.push(message as string)
         },
@@ -368,7 +403,7 @@ describe('tardis-machine', () => {
 
     test('subscribes to five minutes of historical BitMEX ADAM19 trades', { timeout: 10 * 60 * 1000 }, async (context) => {
       let trades: string[] = []
-      const wsURL = `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-01T00:05:00Z`
+      const wsURL = `${wsReplayUrl}?exchange=bitmex&from=2019-06-01&to=2019-06-01T00:05:00Z`
       const simpleBitmexWSClient = new SimpleWebsocketClient(
         wsURL,
         (message) => {
@@ -398,7 +433,7 @@ describe('tardis-machine', () => {
       const deribitMessages: string[] = []
 
       const simpleBitmexWSClient = new SimpleWebsocketClient(
-        `${WS_REPLAY_URL}?exchange=bitmex&from=2019-06-01&to=2019-06-01T00:05:00Z&session=common`,
+        `${wsReplayUrl}?exchange=bitmex&from=2019-06-01&to=2019-06-01T00:05:00Z&session=common`,
         (message) => {
           bitmexMessages.push(message)
         },
@@ -411,7 +446,7 @@ describe('tardis-machine', () => {
       )
 
       const simpleDeribitWSClient = new SimpleWebsocketClient(
-        `${WS_REPLAY_URL}?exchange=deribit&from=2019-06-01&to=2019-06-01T00:05:00Z&session=common`,
+        `${wsReplayUrl}?exchange=deribit&from=2019-06-01&to=2019-06-01T00:05:00Z&session=common`,
         (message) => {
           deribitMessages.push(message)
         },
@@ -434,13 +469,9 @@ describe('tardis-machine', () => {
         }
       )
 
-      await simpleBitmexWSClient.closed()
-
-      const timestamp = new Date().getTime()
-
-      await simpleDeribitWSClient.closed()
+      const [bitmexClosedAt, deribitClosedAt] = await Promise.all([simpleBitmexWSClient.closed(), simpleDeribitWSClient.closed()])
       // both clients should close in the same moment basically
-      assert.ok(new Date().getTime() - timestamp < 100)
+      assert.ok(Math.abs(deribitClosedAt - bitmexClosedAt) < 100)
 
       snapshot(context, bitmexMessages)
       snapshot(context, deribitMessages)
@@ -449,7 +480,7 @@ describe('tardis-machine', () => {
     test('subscribes to five minutes of historical Binance btcusdt trades', { timeout: 10 * 60 * 1000 }, async (context) => {
       let messages: string[] = []
       const simpleBinanceClient = new SimpleWebsocketClient(
-        `${WS_REPLAY_URL}?exchange=binance&from=2019-07-01&to=2019-07-01T00:05:00Z`,
+        `${wsReplayUrl}?exchange=binance&from=2019-07-01&to=2019-07-01T00:05:00Z`,
         (message) => {
           messages.push(message as string)
         },
@@ -484,7 +515,7 @@ describe('tardis-machine', () => {
 
       let messages: string[] = []
 
-      const simpleWSClient = new SimpleWebsocketClient(`${WS_REPLAY_NORMALIZED_URL}?options=${serializeOptions(options)}`, (message) => {
+      const simpleWSClient = new SimpleWebsocketClient(`${wsReplayNormalizedUrl}?options=${serializeOptions(options)}`, (message) => {
         messages.push(message)
       })
 
@@ -497,12 +528,12 @@ describe('tardis-machine', () => {
   describe('WS /ws-stream-normalized', () => {
     test('rejects retired BitMEX streaming without destabilizing the server', { timeout: 5000 }, async () => {
       const options = { exchange: 'bitmex', symbols: ['XBTUSD'], dataTypes: ['trade'] }
-      const closed = await waitForWebSocketClose(`ws://localhost:${PORT + 1}/ws-stream-normalized?options=${serializeOptions(options)}`)
+      const closed = await waitForWebSocketClose(`ws://localhost:${port + 1}/ws-stream-normalized?options=${serializeOptions(options)}`)
 
       assert.equal(closed.code, 1011)
       assert.match(closed.reason, /Real-time streaming is not supported for exchange bitmex/)
 
-      const healthCheckResponse = await fetch(`http://localhost:${PORT}/health-check`)
+      const healthCheckResponse = await fetch(`http://localhost:${port}/health-check`)
       const health = (await healthCheckResponse.json()) as { status: string }
       assert.equal(healthCheckResponse.status, 200)
       assert.equal(health.status, 'Healthy')
@@ -604,7 +635,7 @@ describe('tardis-machine', () => {
           }
 
           const ws = new SimpleWebsocketClient(
-            `ws://localhost:${PORT + 1}/ws-stream-normalized?options=${serializeOptions(options)}`,
+            `ws://localhost:${port + 1}/ws-stream-normalized?options=${serializeOptions(options)}`,
             (message) => {
               const parsedMessage = JSON.parse(message)
 
@@ -622,7 +653,7 @@ describe('tardis-machine', () => {
                 clearInterval(progressInterval)
                 clearTimeout(diagnosticTimeout)
                 ws.close()
-                void ws.closed().then(resolve)
+                void ws.closed().then(() => resolve())
               }
             },
             () => {},
@@ -663,7 +694,7 @@ describe('tardis-machine', () => {
 
 class SimpleWebsocketClient {
   private readonly _socket: WebSocket
-  private isClosed = false
+  private readonly _closed: Promise<number>
   constructor(
     url: string,
     onMessageCB: (message: string) => void,
@@ -679,7 +710,9 @@ class SimpleWebsocketClient {
       console.log('SimpleWebsocketClient Error', error)
       onError(error)
     })
-    this._socket.addEventListener('close', () => (this.isClosed = true))
+    this._closed = new Promise<number>((resolve) => {
+      this._socket.addEventListener('close', () => resolve(Date.now()), { once: true })
+    })
   }
 
   public send(payload: any) {
@@ -690,10 +723,8 @@ class SimpleWebsocketClient {
     this._socket.close()
   }
 
-  public async closed() {
-    while (!this.isClosed) {
-      await new Promise((resolve) => setTimeout(resolve, 10))
-    }
+  public closed() {
+    return this._closed
   }
 }
 
