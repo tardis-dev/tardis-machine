@@ -7,12 +7,14 @@ const MAX_HEADER_BYTES = 20_000
 const MAX_PAYLOAD_BYTES = 512 * 1024
 const MAX_BACKPRESSURE_BYTES = 5 * 1024 * 1024
 const MAX_CLOSE_REASON_BYTES = 123
+const EMPTY_BUFFER = Buffer.alloc(0)
 
 export type MachineWebSocket = {
-  closed: boolean
+  readonly closed: boolean
   onmessage?: (message: Buffer) => void
   send(message: string | ArrayBuffer | Buffer): boolean
   getBufferedAmount(): number
+  drain(timeoutMs?: number): Promise<boolean>
   end(code?: number, reason?: string): void
 }
 
@@ -24,6 +26,7 @@ export class MachineWebSocketServer {
   })
   private readonly server = new WebSocketServer({
     server: this.httpServer,
+    // Keep compression off: drain() relies on ws writing frames directly to rawSocket without queuing in Sender.
     perMessageDeflate: false,
     maxPayload: MAX_PAYLOAD_BYTES
   })
@@ -33,7 +36,7 @@ export class MachineWebSocketServer {
   constructor(private readonly routes: Record<string, MachineWebSocketRoute>) {
     // `ws` re-emits errors from the supplied HTTP server; `listen` reports the same error to its caller.
     this.server.on('error', () => {})
-    this.server.on('connection', (webSocket, request) => this.connect(webSocket, request.url))
+    this.server.on('connection', (webSocket, request) => this.connect(webSocket, request))
   }
 
   public async listen(port: number) {
@@ -67,13 +70,13 @@ export class MachineWebSocketServer {
     ])
   }
 
-  private connect(webSocket: WebSocket, requestUrl: string | undefined) {
-    const connection = new MachineWebSocketConnection(webSocket, () => this.connections.delete(connection))
+  private connect(webSocket: WebSocket, request: http.IncomingMessage) {
+    const connection = new MachineWebSocketConnection(webSocket, request.socket, () => this.connections.delete(connection))
     this.connections.add(connection)
 
     let url: URL
     try {
-      url = new URL(requestUrl ?? '/', 'http://localhost')
+      url = new URL(request.url ?? '/', 'http://localhost')
     } catch {
       connection.end(1008)
       return
@@ -95,12 +98,13 @@ export class MachineWebSocketServer {
 }
 
 class MachineWebSocketConnection implements MachineWebSocket {
-  public closed = false
   public onmessage: ((message: Buffer) => void) | undefined
   private receivedHeartbeat = true
+  private readonly drainWaiters = new Set<() => void>()
 
   constructor(
     private readonly socket: WebSocket,
+    private readonly rawSocket: http.IncomingMessage['socket'],
     private readonly remove: () => void
   ) {
     socket.on('message', (message) => {
@@ -108,12 +112,16 @@ class MachineWebSocketConnection implements MachineWebSocket {
       this.onmessage?.(Buffer.isBuffer(message) ? message : Buffer.from(message as ArrayBuffer))
     })
     socket.on('pong', () => (this.receivedHeartbeat = true))
-    // `ws` closes the connection after protocol and transport errors; cleanup happens in `close`.
-    socket.on('error', () => {})
+    // `ws` transitions to CLOSING on protocol/transport errors; wake drain waiters now and finish cleanup in `close`.
+    socket.on('error', () => this.resolveDrainWaiters())
     socket.on('close', () => {
-      this.closed = true
+      this.resolveDrainWaiters()
       this.remove()
     })
+  }
+
+  public get closed() {
+    return this.socket.readyState !== WebSocket.OPEN
   }
 
   public send(message: string | ArrayBuffer | Buffer) {
@@ -127,16 +135,46 @@ class MachineWebSocketConnection implements MachineWebSocket {
       return false
     }
 
-    if (this.socket.bufferedAmount > MAX_BACKPRESSURE_BYTES) {
+    const bufferedAmount = this.socket.bufferedAmount
+    if (bufferedAmount > MAX_BACKPRESSURE_BYTES) {
       this.end(1008, 'Too much backpressure')
       return false
     }
 
-    return this.socket.bufferedAmount === 0
+    return bufferedAmount === 0
   }
 
   public getBufferedAmount() {
     return this.socket.bufferedAmount
+  }
+
+  public drain(timeoutMs?: number): Promise<boolean> {
+    if (this.closed || !this.rawSocket.writable) return Promise.resolve(false)
+    if (this.socket.bufferedAmount === 0) return Promise.resolve(true)
+
+    return new Promise<boolean>((resolve) => {
+      let settled = false
+      let timer: NodeJS.Timeout | undefined
+
+      const finish = (drained: boolean) => {
+        if (settled) return
+        settled = true
+        if (timer !== undefined) clearTimeout(timer)
+        this.drainWaiters.delete(onClosed)
+        resolve(drained)
+      }
+
+      const onClosed = () => finish(false)
+      this.drainWaiters.add(onClosed)
+      if (timeoutMs !== undefined) timer = setTimeout(() => finish(false), timeoutMs)
+
+      // A zero-byte write emits nothing on the wire and completes once all earlier queued writes flush.
+      this.rawSocket.write(EMPTY_BUFFER, (error) => {
+        if (settled) return
+        if (error != null) this.terminate()
+        finish(error == null && !this.closed)
+      })
+    })
   }
 
   public end(code = 1000, reason = '') {
@@ -147,6 +185,7 @@ class MachineWebSocketConnection implements MachineWebSocket {
     } catch {
       this.terminate()
     }
+    this.resolveDrainWaiters()
   }
 
   public checkHeartbeat() {
@@ -161,6 +200,10 @@ class MachineWebSocketConnection implements MachineWebSocket {
 
   public terminate() {
     if (this.socket.readyState !== WebSocket.CLOSED) this.socket.terminate()
+  }
+
+  private resolveDrainWaiters() {
+    for (const waiter of this.drainWaiters) waiter()
   }
 }
 

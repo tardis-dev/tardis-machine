@@ -1,7 +1,7 @@
 import { decode } from 'node:querystring'
 import { combine, compute, replayNormalized } from 'tardis-dev'
 import { debug } from '../debug.ts'
-import { constructDataTypeFilter, getComputables, getNormalizers, ReplayNormalizedRequestOptions, wait } from '../helpers.ts'
+import { constructDataTypeFilter, getComputables, getNormalizers, ReplayNormalizedRequestOptions } from '../helpers.ts'
 import type { MachineWebSocket } from './server.ts'
 
 export async function replayNormalizedWS(ws: MachineWebSocket, query: string) {
@@ -40,18 +40,12 @@ export async function replayNormalizedWS(ws: MachineWebSocket, query: string) {
         continue
       }
 
-      const success = ws.send(JSON.stringify(message))
-      // handle backpressure in case of slow clients
-      if (!success) {
-        while (!ws.closed && ws.getBufferedAmount() > 0) {
-          await wait(1)
-        }
+      if (!ws.send(JSON.stringify(message)) && !(await ws.drain())) {
+        return
       }
     }
 
-    while (!ws.closed && ws.getBufferedAmount() > 0) {
-      await wait(100)
-    }
+    await ws.drain()
 
     ws.end(1000, 'WS replay-normalized finished')
 

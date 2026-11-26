@@ -1,8 +1,10 @@
 import { decode } from 'node:querystring'
 import { combine, compute, Exchange, streamNormalized } from 'tardis-dev'
 import { debug } from '../debug.ts'
-import { constructDataTypeFilter, getComputables, getNormalizers, StreamNormalizedRequestOptions, wait } from '../helpers.ts'
+import { constructDataTypeFilter, getComputables, getNormalizers, StreamNormalizedRequestOptions } from '../helpers.ts'
 import type { MachineWebSocket } from './server.ts'
+
+const MAX_BACKPRESSURE_WAIT_MS = 135_000
 
 export async function streamNormalizedWS(ws: MachineWebSocket, query: string) {
   let messages: AsyncIterableIterator<any> | undefined
@@ -17,9 +19,6 @@ export async function streamNormalizedWS(ws: MachineWebSocket, query: string) {
 
     const options = Array.isArray(streamNormalizedOptions) ? streamNormalizedOptions : [streamNormalizedOptions]
     let subSequentErrorsCount: { [key in Exchange]?: number } = {}
-
-    let retries = 0
-    let bufferedAmount = 0
 
     const messagesIterables = options.map((option) => {
       // let's map from provided options to options and normalizers that needs to be added for dataTypes provided in options
@@ -81,27 +80,22 @@ export async function streamNormalizedWS(ws: MachineWebSocket, query: string) {
         continue
       }
 
-      retries = 0
-      bufferedAmount = 0
       // handle backpressure in case of slow clients
-      while (!ws.closed && (bufferedAmount = ws.getBufferedAmount()) > 0) {
-        retries += 1
-        const isState = new Date().valueOf() - message.localTimestamp.valueOf() >= 6
+      const bufferedAmount = ws.getBufferedAmount()
+      if (bufferedAmount > 0) {
+        const drainStartedAt = Date.now()
+        const drained = await ws.drain(MAX_BACKPRESSURE_WAIT_MS)
+        if (ws.closed) return
 
-        // log stale messages, stale meaning message was not sent in 6 ms or more (2 retries)
-
-        if (isState) {
-          debug('Slow client, waiting %d ms, buffered amount: %d', 3 * retries, bufferedAmount)
-        }
-        if (retries > 300) {
+        if (!drained) {
           ws.end(1008, 'Too much backpressure')
           return
         }
 
-        await wait(3 * retries)
+        if (Date.now() - message.localTimestamp.valueOf() >= 6) {
+          debug('Slow client, waited %d ms, buffered amount: %d', Date.now() - drainStartedAt, bufferedAmount)
+        }
       }
-
-      if (ws.closed) return
 
       ws.send(JSON.stringify(message))
 
@@ -110,9 +104,7 @@ export async function streamNormalizedWS(ws: MachineWebSocket, query: string) {
       }
     }
 
-    while (!ws.closed && ws.getBufferedAmount() > 0) {
-      await wait(100)
-    }
+    await ws.drain()
 
     ws.end(1000, 'WS stream-normalized finished')
 
