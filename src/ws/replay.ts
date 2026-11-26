@@ -1,7 +1,6 @@
 import { decode } from 'node:querystring'
 import { combine, Exchange, replay, ReplayOptions } from 'tardis-dev'
 import { debug } from '../debug.ts'
-import { wait } from '../helpers.ts'
 import type { MachineWebSocket } from './server.ts'
 import { SubscriptionMapper, subscriptionsMappers } from './subscriptionsmappers.ts'
 
@@ -96,12 +95,8 @@ class ReplaySession {
         for await (const { message } of messages) {
           if (connection.ws.closed) break
 
-          const success = connection.ws.send(message)
-          // handle backpressure in case of slow clients
-          if (!success) {
-            while (!connection.ws.closed && connection.ws.getBufferedAmount() > 0) {
-              await wait(1)
-            }
+          if (!connection.ws.send(message) && !(await connection.ws.drain())) {
+            break
           }
         }
       } else {
@@ -127,12 +122,8 @@ class ReplaySession {
           if (this._connections.every((connection) => connection.ws.closed)) break
           if (ws.closed) continue
 
-          const success = ws.send(message)
-          // handle backpressure in case of slow clients
-          if (!success) {
-            while (!ws.closed && ws.getBufferedAmount() > 0) {
-              await wait(1)
-            }
+          if (!ws.send(message)) {
+            await ws.drain()
           }
         }
       }
@@ -160,8 +151,8 @@ class ReplaySession {
       }
 
       // let's wait until buffer is empty before closing normal connections
-      while (!error && !connection.ws.closed && connection.ws.getBufferedAmount() > 0) {
-        await wait(100)
+      if (!error) {
+        await connection.ws.drain()
       }
 
       connection.close(error)

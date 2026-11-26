@@ -250,8 +250,6 @@ function parseAsQuoteComputable(dataType: string) {
   throw new Error(`invalid data type: ${dataType}`)
 }
 
-export const wait = (delayMS: number) => new Promise((resolve) => setTimeout(resolve, delayMS))
-
 // 'drain' is never emitted after the client disconnects, so also stop waiting on 'close';
 // both listeners are removed on either event, so repeated waits keep nothing alive
 export const responseDrainedOrClosed = (res: OutgoingMessage) =>
